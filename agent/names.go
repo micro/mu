@@ -19,6 +19,10 @@ const namesFile = "agents/names.json"
 
 var namesMu sync.Mutex
 
+// Published maps are immutable. Mutations save a copy before replacing them.
+var namesCache map[string]nameOwner
+var namesByAgent map[nameOwner]string
+
 type nameOwner struct {
 	Owner string `json:"owner"`
 	ID    string `json:"id"`
@@ -30,6 +34,9 @@ type nameOwner struct {
 func names() (map[string]nameOwner, error) {
 	namesMu.Lock()
 	defer namesMu.Unlock()
+	if namesCache != nil {
+		return namesCache, nil
+	}
 	reserved := map[string]nameOwner{}
 	raw, err := data.LoadFile(namesFile)
 	if err == nil {
@@ -88,6 +95,7 @@ func names() (map[string]nameOwner, error) {
 			return nil, err
 		}
 	}
+	publishNames(reserved)
 	return reserved, nil
 }
 
@@ -133,4 +141,50 @@ func nameBase(a *Agent) string {
 		base = "agent"
 	}
 	return base
+}
+
+func publishNames(reserved map[string]nameOwner) {
+	reverse := make(map[nameOwner]string, len(reserved))
+	for name, ref := range reserved {
+		reverse[ref] = name
+	}
+	namesCache, namesByAgent = reserved, reverse
+}
+
+func reservedSlug(a *Agent) (string, error) {
+	if _, err := names(); err != nil {
+		return "", err
+	}
+	namesMu.Lock()
+	defer namesMu.Unlock()
+	return namesByAgent[nameOwner{a.Owner, a.ID}], nil
+}
+
+// reserveName adds only the newly created agent; ordinary lookups never reload
+// the roster. The old immutable index stays valid if persistence fails.
+func reserveName(a *Agent) error {
+	if _, err := names(); err != nil {
+		return err
+	}
+	namesMu.Lock()
+	defer namesMu.Unlock()
+	ref := nameOwner{a.Owner, a.ID}
+	if namesByAgent[ref] != "" {
+		return nil
+	}
+	next := make(map[string]nameOwner, len(namesCache)+1)
+	for name, owner := range namesCache {
+		next[name] = owner
+	}
+	base := nameBase(a)
+	candidate := base
+	for n := 2; reservedName(candidate) || next[candidate].ID != ""; n++ {
+		candidate = base + strconv.Itoa(n)
+	}
+	next[candidate] = ref
+	if err := data.SaveJSON(namesFile, next); err != nil {
+		return err
+	}
+	publishNames(next)
+	return nil
 }

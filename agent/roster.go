@@ -302,7 +302,7 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 		return nil, "", err
 	}
 	a.ID = rec.ID
-	if _, err := names(); err != nil {
+	if err := reserveName(a); err != nil {
 		_ = userdb.Delete(ns, owner, collection, a.ID)
 		if a.TokenID != "" {
 			_ = auth.DeleteToken(a.TokenID, owner)
@@ -363,6 +363,10 @@ func (a *Agent) save() error {
 func EnsureTags(owner string) {
 	rosterMutation.Lock()
 	defer rosterMutation.Unlock()
+	if _, err := names(); err != nil {
+		return
+	}
+
 	all := Agents(owner)
 	var missing []*Agent
 	for _, a := range all {
@@ -444,6 +448,10 @@ func NameOf(owner, id string) string {
 func RemoveAgent(owner, id string) error {
 	rosterMutation.Lock()
 	defer rosterMutation.Unlock()
+	if _, err := names(); err != nil {
+		return err
+	}
+
 	a := For(owner, id)
 	if a == nil {
 		return fmt.Errorf("no such agent")
@@ -590,6 +598,10 @@ func without(list []string, tag string) []string {
 func UpdateAgent(owner, id, name, prompt, description string, services []string) (*Agent, error) {
 	rosterMutation.Lock()
 	defer rosterMutation.Unlock()
+	if _, err := names(); err != nil {
+		return nil, err
+	}
+
 	selected := validServices(services)
 	if len(services) > 0 && len(selected) == 0 {
 		return nil, fmt.Errorf("none of the selected services are available")

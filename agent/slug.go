@@ -28,13 +28,8 @@ func Slug(a *Agent) string {
 	if a == nil {
 		return DefaultSlug
 	}
-	reserved, err := names()
-	if err == nil {
-		for name, ref := range reserved {
-			if ref.Owner == a.Owner && ref.ID == a.ID {
-				return name
-			}
-		}
+	if name, err := reservedSlug(a); err == nil && name != "" {
+		return name
 	}
 	// Fail closed to the owner's opaque ID if the index is unavailable.
 	return a.ID

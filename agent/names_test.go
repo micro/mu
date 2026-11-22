@@ -62,6 +62,8 @@ func TestReservedNamesAcrossOwnersAndRename(t *testing.T) {
 }
 
 func TestNameMigrationPreservesIDsAndExistingSuffixes(t *testing.T) {
+	resetNameCache()
+	t.Cleanup(resetNameCache)
 	var agents []*Agent
 	for i, tag := range []string{"migrationname", "migrationname", "migrationname2"} {
 		a := &Agent{Owner: []string{"migration_a", "migration_b", "migration_c"}[i], Name: tag, Tag: tag, Prompt: "private"}
@@ -184,5 +186,86 @@ func TestPublicProfileOnlyExposesPublishedMetadata(t *testing.T) {
 	}
 	if w := get(""); w.Code != 404 {
 		t.Fatal("unpublished profile still visible")
+	}
+}
+
+func resetNameCache() {
+	namesMu.Lock()
+	defer namesMu.Unlock()
+	namesCache = nil
+	namesByAgent = nil
+}
+
+func TestColdRosterMutationsReserveOldNames(t *testing.T) {
+	for _, action := range []string{"rename", "delete"} {
+		t.Run(action, func(t *testing.T) {
+			tag := "coldmutation" + action
+			a := &Agent{Owner: "cold_" + action, Name: tag, Tag: tag, Prompt: "instruction"}
+			rec, err := userdb.Create(ns, a.Owner, collection, fields(a), false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			a.ID = rec.ID
+			resetNameCache()
+			t.Cleanup(resetNameCache)
+			if action == "rename" {
+				if _, err := UpdateAgent(a.Owner, a.ID, "new label", a.Prompt, "", nil); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := RemoveAgent(a.Owner, a.ID); err != nil {
+				t.Fatal(err)
+			}
+			// Reload from disk too: the reservation must survive a process restart.
+			resetNameCache()
+			reserved, err := names()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if reserved[tag] != (nameOwner{a.Owner, a.ID}) {
+				t.Fatal("original address was not reserved")
+			}
+			other, _, err := CreateAgent("other_"+action, tag, Hosted, "prompt", "", nil, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if Slug(other) == tag {
+				t.Fatal("old address was reclaimed")
+			}
+		})
+	}
+}
+
+func TestWarmNamesDoNotRepeatMigration(t *testing.T) {
+	resetNameCache()
+	t.Cleanup(resetNameCache)
+	if _, err := names(); err != nil {
+		t.Fatal(err)
+	}
+	// A raw legacy record is deliberately invisible to a warm index. This
+	// detects accidental roster rescanning on Slug/namedAgent calls.
+	a := &Agent{Owner: "warm_index", Name: "warmlegacy", Tag: "warmlegacy", Prompt: "instruction"}
+	rec, err := userdb.Create(ns, a.Owner, collection, fields(a), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.ID = rec.ID
+	if got, err := namedAgent(a.Tag); err != nil || got != nil {
+		t.Fatal("warm lookup reran migration")
+	}
+	if Slug(a) != a.ID {
+		t.Fatal("warm reverse lookup reran migration")
+	}
+	// The supported creation path explicitly updates the cache and persistence.
+	created, _, err := CreateAgent("warm_index", "warmcreated", Hosted, "prompt", "", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slug := Slug(created)
+	if slug == created.ID {
+		t.Fatal("creation did not update index")
+	}
+	resetNameCache()
+	if Slug(created) != slug || Slug(a) != a.Tag {
+		t.Fatal("restart did not restore/migrate names")
 	}
 }
