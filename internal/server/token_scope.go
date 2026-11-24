@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"mu/agent"
 	"mu/internal/api"
 	"mu/internal/auth"
 )
@@ -26,13 +27,14 @@ func scopedRequestAllowed(r *http.Request) bool {
 	return (p == "/session" && r.Method == http.MethodGet) || p == "/.well-known/jmap" || p == "/mail/jmap" || strings.HasPrefix(p, "/mail/jmap/") || productClientRequest(r) || p == "/mcp" || p == "/mcp/assistant" || p == "/api/v1" || strings.HasPrefix(p, "/api/v1/")
 }
 
-// Only content-negotiated resource handlers may receive product-scoped credentials.
 func mucpRootRequest(r *http.Request) bool {
 	return r.URL.Path == "/" && len(r.Header.Values("Micro-Protocol")) > 0
 }
 
 func productClientRequest(r *http.Request) bool {
-	if mucpRootRequest(r) {
+	// Mu Pay always serves JSON. Receipt reads and bodyless Start requests
+	// from booking apps can arrive without content negotiation headers.
+	if mucpRootRequest(r) || agent.PayRequest(r) {
 		return true
 	}
 	p := r.URL.Path

@@ -19,11 +19,42 @@ import (
 	pb "mu/proto/assistant/v1"
 )
 
-// payHandler uses the existing agent capability; it never accepts prices,
-// credited owners or billing policy from the integration token.
-func payHandler(w http.ResponseWriter, r *http.Request) bool {
-	parts := strings.Split(strings.Trim(strings.TrimPrefix(r.URL.Path, "/agent/"), "/"), "/")
+// PayRequest identifies the payment operations that the server may forward to
+// this handler with an API token. Reserved names can have their own handlers.
+func PayRequest(r *http.Request) bool {
+	parts, ok := payParts(r)
+	return ok && !reservedName(strings.ToLower(parts[0]))
+}
+
+// A non-nil slice also identifies an unsupported request in the pay namespace,
+// so payHandler can return its usual 404 instead of opening the agent page.
+func payParts(r *http.Request) ([]string, bool) {
+	p, ok := strings.CutPrefix(r.URL.Path, "/agent/")
+	if !ok {
+		return nil, false
+	}
+	parts := strings.SplitN(strings.TrimSuffix(p, "/"), "/", 5)
 	if len(parts) < 2 || parts[1] != "pay" {
+		return nil, false
+	}
+	if parts[0] == "" || strings.Contains(p, `\`) || strings.Contains(strings.ToLower(r.URL.RawPath), "%2f") {
+		return parts, false
+	}
+	switch len(parts) {
+	case 2:
+		return parts, r.Method == http.MethodPost
+	case 3:
+		return parts, r.Method == http.MethodGet && parts[2] != ""
+	case 4:
+		return parts, r.Method == http.MethodPost && parts[2] != "" && parts[3] == "start"
+	}
+	return parts, false
+}
+
+// payHandler checks the agent capability and the owner before serving any booking.
+func payHandler(w http.ResponseWriter, r *http.Request) bool {
+	parts, supported := payParts(r)
+	if parts == nil {
 		return false
 	}
 	r = api.CredentialRequest(r)
@@ -37,14 +68,14 @@ func payHandler(w http.ResponseWriter, r *http.Request) bool {
 	}
 	id, ok := agentSlugTarget(sess.Account, parts[0])
 	a := For(sess.Account, id)
-	if !ok || a == nil {
+	if !supported || !ok || a == nil {
 		http.NotFound(w, r)
 		return true
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	var result *pay.Session
-	switch {
-	case len(parts) == 2 && r.Method == "POST":
+	switch len(parts) {
+	case 2:
 		if err := auth.CheckPostRate(sess.Account); err != nil {
 			http.Error(w, "Too many requests", 429)
 			return true
@@ -61,13 +92,10 @@ func payHandler(w http.ResponseWriter, r *http.Request) bool {
 		if err == nil {
 			result, err = pay.Checkout(r.Context(), sess.Account, a.ID, origin.URL(r), a.Pay, a.PaySecret, &q)
 		}
-	case len(parts) == 3 && r.Method == "GET":
+	case 3:
 		result, err = pay.Read(sess.Account, a.ID, parts[2])
-	case len(parts) == 4 && parts[3] == "start" && r.Method == "POST":
+	case 4:
 		result, err = pay.Start(sess.Account, a.ID, parts[2])
-	default:
-		http.Error(w, "Not found", 404)
-		return true
 	}
 	if err != nil {
 		code := http.StatusBadRequest
