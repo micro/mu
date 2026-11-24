@@ -85,11 +85,13 @@ func validateURL(raw string) (*url.URL, error) {
 
 // Options tunes a fetch. Zero values fall back to safe defaults.
 type Options struct {
-	Method   string
-	Headers  map[string]string
-	Body     string
-	MaxBytes int64
-	Timeout  time.Duration
+	// NoRedirect keeps signed callbacks at their configured destination.
+	NoRedirect bool
+	Method     string
+	Headers    map[string]string
+	Body       string
+	MaxBytes   int64
+	Timeout    time.Duration
 }
 
 // Response is the guarded fetch result handed back to the caller.
@@ -159,6 +161,9 @@ func Fetch(ctx context.Context, raw string, opt Options) (*Response, error) {
 		Timeout:   timeout,
 		Transport: transport,
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
+			if opt.NoRedirect {
+				return http.ErrUseLastResponse
+			}
 			if len(via) >= maxRedirects {
 				return fmt.Errorf("too many redirects")
 			}

@@ -35,6 +35,7 @@ import (
 
 	"mu/internal/group"
 	"mu/internal/notes"
+	"mu/internal/pay"
 	"mu/internal/quota"
 	"mu/internal/safety"
 	"mu/internal/thread"
@@ -81,6 +82,7 @@ var errNoConversation = errors.New("no conversation with that id")
 
 // AskRequest is one message arriving from a client.
 type AskRequest struct {
+	Session string         // Optional paid access period; never a login session.
 	History []QueryMessage // Optional authoritative carrier history, already access-checked.
 	Context ClientContext
 	Account string
@@ -189,6 +191,36 @@ func Ask(r AskRequest) (Answer, error) {
 	if strings.TrimSpace(r.Account) == "" || strings.TrimSpace(r.Text) == "" {
 		return Answer{}, nil
 	}
+	if err := pay.Check(r.Account, r.Agent, r.Session, r.On); err != nil {
+		return Answer{}, err
+	}
+	if r.Session != "" {
+		s, err := pay.Read(r.Account, r.Agent, r.Session)
+		if err != nil {
+			return Answer{}, err
+		}
+		if r.On == "" {
+			r.On = s.Thread
+		}
+		if r.On == "" {
+			th := thread.Open(r.Account, thread.WebClient, "pay:"+r.Session)
+			if th == nil {
+				return Answer{}, fmt.Errorf("could not open paid conversation")
+			}
+			r.On = th.ID
+		} else {
+			th := thread.Get(r.Account, r.On)
+			if th == nil {
+				return Answer{}, errNoConversation
+			}
+			if th.Agent != "" && th.Agent != r.Agent {
+				return Answer{}, fmt.Errorf("conversation belongs to another agent")
+			}
+		}
+		if err := pay.Bind(r.Account, r.Agent, r.Session, r.On); err != nil {
+			return Answer{}, err
+		}
+	}
 	var chosen QueryOpts
 	if r.Agent != "" && Platform(r.Agent) == nil {
 		var err error
@@ -262,6 +294,9 @@ func Ask(r AskRequest) (Answer, error) {
 			th = thread.Open(r.Account, r.Client, key)
 		}
 	}
+	if err := pay.Check(r.Account, r.Agent, r.Session, threadID(th)); err != nil {
+		return Answer{}, err
+	}
 	// Who the conversation is with, so a surface that has an agent selected can
 	// show that agent's conversations rather than all of them or none.
 	thread.SetAgent(r.Account, threadID(th), r.Agent)
@@ -274,6 +309,7 @@ func Ask(r AskRequest) (Answer, error) {
 	}
 
 	opts := QueryOpts{
+		PaidSession: r.Session,
 		interactive: true,
 		Context:     r.Context,
 		Thread:      threadID(th),

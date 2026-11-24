@@ -154,3 +154,10 @@ Required-input and description options in `service/options.proto` keep MCP tool
 metadata and generated SDK requiredness aligned with proto-first contracts.
 Only registered MUCP operations appear in discovery. Schema-only services remain
 accessible through their existing REST/MCP interfaces until an adapter ships.
+
+## Paid agent sessions
+
+`assistant/v1/pay.proto` defines Mu Pay checkout, policy and session types for
+the [product HTTP binding](../docs/PAY.md). These use snake_case JSON keys and
+numeric Unix timestamps in the existing product endpoints. `PaidSessions` is not
+registered in the MUCP dispatcher or advertised as a MUCP capability.

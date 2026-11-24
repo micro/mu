@@ -58,9 +58,18 @@ URL aliases; integrations affected by a collision must use the assigned URL.
 Owner-scoped opaque agent IDs remain accepted for compatibility.
 
 In Edit agent, enable **Public profile** to publish the agent's name and
-description at that URL. Profiles are private by default, including for existing
+description at that URL. An optional Website links visitors to the external app;
+when Mu Pay is enabled the profile also shows its price, duration and booking
+link. Profiles are private by default, including for existing
 agents. Publishing does not expose the system prompt, tools, memory, credentials
 or conversations, and does not grant permission to run the agent. The owner
 continues to see their chat at the same address. Other signed-in visitors see
 the public profile, not a different agent with the same name. Unpublishing
 removes the public page; the reserved name remains.
+
+## Paid sessions
+
+[Mu Pay](PAY.md) adds owner-configured checkout and timed private sessions using
+the same agent token. Pass `session` on paid prompts; the session retains its
+thread after the first turn. Ordinary private and public requests remain
+available without a booking.

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html"
 	"mu/internal/model"
+	"mu/internal/pay"
 	"net/http"
 	"net/url"
 
@@ -68,6 +69,7 @@ type QueryMessage struct {
 }
 
 type QueryOpts struct {
+	PaidSession       string       // Internal authorisation propagated by Ask.
 	Definition        *model.Model // Optional composed model; run restrictions still apply.
 	anonymousTools    bool         // Public voice: tools must not inherit the payer's account or profile.
 	GroupActor        string       // Internal authenticated initiator; never supplied by the model.
@@ -135,6 +137,9 @@ func Routed(prompt string, opts QueryOpts) (string, QueryOpts) {
 }
 
 func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
+	if err := pay.Check(accountID, "", opts.PaidSession, opts.Thread); err != nil {
+		return "", err
+	}
 	if err := opts.Context.validateMessages(); err != nil {
 		return "", err
 	}
@@ -151,6 +156,9 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if payHandler(w, r) {
+		return
+	}
 	if r.Method == http.MethodGet && r.URL.Query().Get("view") == "agents" {
 		clientCatalog(w, api.CredentialRequest(r))
 		return
@@ -691,6 +699,10 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if err := pay.Check(accountID, "", "", threadID); err != nil {
+		app.RespondError(w, http.StatusPaymentRequired, err.Error())
+		return
+	}
 	attachment := req.Attachment
 	if threadID != "" {
 		attachment = thread.Attachment(accountID, threadID)
