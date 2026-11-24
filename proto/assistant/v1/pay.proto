@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: Apache-2.0
+syntax = "proto3";
+package mu.assistant.v1;
+option go_package = "mu/proto/assistant/v1;assistantv1";
+option java_package = "mu.micro.client.proto.assistant.v1";
+option java_multiple_files = true;
+
+// Product HTTP binding: POST /agent/{name}/pay, GET /agent/{name}/pay/{id},
+// POST /agent/{name}/pay/{id}/start. Not yet exposed through the MUCP dispatcher.
+service PaidSessions {
+  rpc Checkout(CheckoutRequest) returns (PaidSession);
+  rpc Read(PaidSessionRequest) returns (PaidSession);
+  rpc Start(PaidSessionRequest) returns (PaidSession);
+}
+message PayPolicy {
+  bool enabled = 1;
+  int32 price = 2; // Minor currency units per participant.
+  string currency = 3; // gbp or usd.
+  int32 minutes = 4;
+  string return_url = 5; // Owner-configured HTTPS app URL.
+  string notify_url = 6; // Optional signed payment notification destination.
+}
+message CheckoutRequest {
+  string reference = 1; // Opaque app booking reference, retry key per owner/agent.
+  int32 participants = 2;
+}
+message PaidSessionRequest { string id = 1; }
+message PaidSession {
+  string id = 1;
+  string agent = 2; // Immutable agent ID.
+  string reference = 3;
+  int32 participants = 4;
+  int32 amount = 5;
+  string currency = 6;
+  int32 credits = 7;
+  int32 minutes = 8;
+  string status = 9; // pending, paid, active, expired.
+  string checkout_url = 10; // Mu Pay URL.
+  int64 created_at = 11; // Unix seconds.
+  int64 paid_at = 12;
+  int64 started_at = 13;
+  int64 ends_at = 14;
+  string thread = 15;
+}

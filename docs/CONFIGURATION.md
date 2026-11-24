@@ -57,6 +57,13 @@ also count. Anonymous access to the full assistant remains disabled.
 Operation prices are in `quota.json`. Provider estimates are under Admin →
 Traffic → Spend; product credits are not a provider spending limit.
 
+### Mu Pay
+
+[Mu Pay](PAY.md) uses the existing Stripe account to sell timed agent sessions.
+Configure price and duration in Edit agent. GBP defaults to 100 credits per pound
+(£3 grants 300 credits); `MU_PAY_GBP_CREDITS_PER_POUND` optionally overrides this
+fixed product rate. Payment webhooks are required for settlement.
+
 ### Monthly subscriptions
 
 Starter defaults to $12/month with 1,000 monthly usage credits; Pro defaults to

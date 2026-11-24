@@ -64,3 +64,10 @@ or conversations, and does not grant permission to run the agent. The owner
 continues to see their chat at the same address. Other signed-in visitors see
 the public profile, not a different agent with the same name. Unpublishing
 removes the public page; the reserved name remains.
+
+## Paid sessions
+
+[Mu Pay](PAY.md) adds owner-configured checkout and timed private sessions using
+the same agent token. Pass `session` on paid prompts; the session retains its
+thread after the first turn. Ordinary private and public requests remain
+available without a booking.

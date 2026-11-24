@@ -29,6 +29,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/client"
 	"mu/internal/imageproxy"
+	"mu/internal/pay"
 	"mu/internal/push"
 	"mu/internal/settings"
 	"mu/internal/setup"
@@ -219,6 +220,7 @@ func authRequired() map[string]bool {
 		"/api/v1":  false,
 		"/api/v1/": false,
 		"/agent":   false, // Redirects to the named page; auth checked in handler
+		"/pay/":    false,
 		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
 		"/push/":   true,  // Subscribing this device to notifications (old name)
 		"/notify/": true,  // The same, under the name the feature actually has
@@ -366,6 +368,7 @@ func registerRoutes() {
 	// was lost between the deploy and the dashboard edit; the dashboard now
 	// names this one.
 	http.HandleFunc("/stripe/webhook", billing.HandleStripeWebhook)
+	http.HandleFunc("/pay/", pay.Handler)
 	http.HandleFunc("/stripe/checkout", billing.BalanceHandler)
 	http.HandleFunc("/stripe/success", billing.BalanceHandler)
 

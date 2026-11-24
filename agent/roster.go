@@ -25,6 +25,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -36,6 +37,7 @@ import (
 	"mu/agent/micro"
 	"mu/internal/auth"
 	"mu/internal/model"
+	"mu/internal/pay"
 	"mu/internal/service"
 	"mu/internal/userdb"
 	"mu/service/mail"
@@ -100,6 +102,9 @@ type Agent struct {
 	// Description is the one-line the router reads when deciding which agent
 	// should answer.
 	Description string `json:"description,omitempty"`
+	// Pay is the owner's policy; the signing secret never appears in agent JSON.
+	Pay       *pay.Policy `json:"pay,omitempty"`
+	PaySecret string      `json:"-"`
 	// ProfilePublic exposes only the safe profile, not the underlying record.
 	ProfilePublic bool `json:"profile_public,omitempty"`
 	// TokenID identifies the credential without holding it. The secret is shown
@@ -338,7 +343,7 @@ func validServices(in []string) []string {
 func fields(a *Agent) map[string]any {
 	return map[string]any{
 		"name": a.Name, "kind": a.Kind, "prompt": a.Prompt,
-		"description": a.Description, "model": a.Model, "profile_public": a.ProfilePublic,
+		"description": a.Description, "model": a.Model, "profile_public": a.ProfilePublic, "pay": a.Pay, "pay_secret": a.PaySecret,
 		"token_id": a.TokenID, "services": strings.Join(a.Services, ","),
 		"tag":     a.Tag,
 		"former":  strings.Join(a.Former, ","),
@@ -503,6 +508,10 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 		Tag: str("tag"), Model: str("model"),
 	}
 	a.ProfilePublic, _ = rec.Data["profile_public"].(bool)
+	a.PaySecret = str("pay_secret")
+	if raw, err := json.Marshal(rec.Data["pay"]); err == nil {
+		_ = json.Unmarshal(raw, &a.Pay)
+	}
 	// Records written before the distinction went carry kind:"external". They
 	// are ordinary agents: normalised on read, so nothing downstream has to know
 	// the word ever existed.

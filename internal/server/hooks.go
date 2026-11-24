@@ -46,6 +46,7 @@ import (
 	"mu/internal/model"
 	"mu/internal/notes"
 	"mu/internal/origin"
+	"mu/internal/pay"
 	"mu/internal/push"
 	"mu/internal/quota"
 	"mu/internal/service"
@@ -87,6 +88,8 @@ const mailHistoryTurns = 6
 
 // wireHooks connects the building blocks to each other.
 func wireHooks() {
+	pay.Backend = billing.Pay{}
+	pay.StartDelivery()
 	mail.Introduction = hello.Receive
 	mail.ClaimIntroduction = hello.Claim
 	hello.Start()

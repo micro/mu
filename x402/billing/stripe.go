@@ -361,8 +361,9 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// Parse event
 	var event struct {
-		Type string `json:"type"`
-		Data struct {
+		Account string `json:"account"`
+		Type    string `json:"type"`
+		Data    struct {
 			Object json.RawMessage `json:"object"`
 		} `json:"data"`
 	}
@@ -372,6 +373,15 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if handled, err := payEvent(r.Context(), event.Type, event.Account, event.Data.Object); handled || err != nil {
+		if err != nil {
+			app.Log("pay", "settlement failed: %v", err)
+			http.Error(w, "Mu Pay settlement failed", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	app.Log("stripe", "webhook received: %s", event.Type)
 
 	// Handle checkout.session.completed

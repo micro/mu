@@ -29,6 +29,7 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -36,6 +37,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/pay"
 	"mu/internal/result"
 	"mu/internal/thread"
 )
@@ -47,6 +49,7 @@ import (
 // difference between an agent and a completion endpoint. Leave it out and one
 // is opened.
 type apiAsk struct {
+	Session    string        `json:"session,omitempty"`
 	PublicOnly bool          `json:"public_only,omitempty"`
 	Context    ClientContext `json:"context,omitempty"`
 	// Prompt is the question. It is what everything else in this codebase
@@ -159,6 +162,14 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 	if len(req.Text) > askLimit {
 		req.Text = req.Text[:askLimit]
 	}
+	if req.PublicOnly && req.Session != "" {
+		app.BadRequest(w, r, "paid sessions cannot use public_only")
+		return
+	}
+	if err := pay.Check(accountID, agentID, req.Session, req.Thread); err != nil {
+		http.Error(w, err.Error(), http.StatusPaymentRequired)
+		return
+	}
 	// Restricted requests never resolve private history, instructions, memory or tools.
 	if req.PublicOnly {
 		if req.Thread != "" {
@@ -207,6 +218,7 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	res, err := Ask(AskRequest{
 		System:  voiceInstruction,
+		Session: req.Session,
 		Context: req.Context,
 		Account: accountID,
 		Client:  thread.WebClient,
@@ -216,6 +228,14 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 		Trigger: "api",
 	})
 	if err != nil {
+		if errors.Is(err, pay.ErrInactive) {
+			http.Error(w, err.Error(), http.StatusPaymentRequired)
+			return
+		}
+		if errors.Is(err, pay.ErrNotFound) {
+			app.NotFound(w, r, "paid session not found")
+			return
+		}
 		app.ServerError(w, r, "that one did not work")
 		return
 	}
