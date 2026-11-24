@@ -81,3 +81,43 @@ func TestMUCPRootAcceptsScopedToken(t *testing.T) {
 		}
 	}
 }
+
+func TestMuPayProductTokenRoutes(t *testing.T) {
+	const owner = "pay-route-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	t.Cleanup(func() { auth.RemoveAccountForTest(owner) })
+	_, token, err := auth.CreateToken(owner, "booking app", []string{"read", "write", "api:agent"}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Only checkout carries a JSON body. Malten's lookup and Start have no
+	// content headers, as in the Mu Pay examples.
+	for _, tc := range []struct {
+		method, path string
+		want         bool
+	}{
+		{"POST", "/agent/malten/pay", true},
+		{"GET", "/agent/malten/pay/booking-1", true},
+		{"POST", "/agent/malten/pay/booking-1/start", true},
+		{"GET", "/agent/malten/pay", false},
+		{"GET", "/agent/malten/pay/booking-1/start", false},
+		{"POST", "/agent/malten/pay/booking-1", false},
+		{"POST", "/agent/malten/pay/booking-1/other", false},
+		{"POST", "/agent/malten/pay/booking-1/start/other", false},
+		{"POST", "/agent/session/pay", false},
+		{"POST", "/agent/malten/settings", false},
+		{"GET", "/pay/booking-1", false},
+	} {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			r := httptest.NewRequest(tc.method, tc.path, nil)
+			r.Header.Set("Authorization", "Bearer "+token)
+			if tc.method == "POST" && !strings.HasSuffix(tc.path, "/start") {
+				r.Header.Set("Content-Type", "application/json")
+			}
+			if got := scopedRequestAllowed(r); got != tc.want {
+				t.Errorf("token route allowed = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
