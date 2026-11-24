@@ -25,20 +25,21 @@ type Policy = pb.PayPolicy
 type Session = pb.PaidSession
 
 type Record struct {
-	Session      *Session `json:"session"`
-	Owner        string   `json:"owner"`
-	StripeID     string   `json:"stripe_id"`
-	StripeURL    string   `json:"stripe_url"`
-	ReturnURL    string   `json:"return_url"`
-	NotifyURL    string   `json:"notify_url"`
-	NotifySecret string   `json:"notify_secret"`
-	Delivered    bool     `json:"delivered"`
-	NextDelivery int64    `json:"next_delivery"`
-	Attempts     int      `json:"attempts"`
-	Expires      int64    `json:"expires"`
+	Session       *Session `json:"session"`
+	Owner         string   `json:"owner"`
+	StripeID      string   `json:"stripe_id"`
+	StripeURL     string   `json:"stripe_url"`
+	ReturnURL     string   `json:"return_url"`
+	NotifyURL     string   `json:"notify_url"`
+	NotifySecret  string   `json:"notify_secret"`
+	DeliveryState string   `json:"delivery_state,omitempty"`
+	Delivered     bool     `json:"delivered"`
+	NextDelivery  int64    `json:"next_delivery"`
+	Attempts      int      `json:"attempts"`
+	Expires       int64    `json:"expires"`
 }
 type Provider interface {
-	Checkout(context.Context, Record) (string, string, error)
+	Checkout(context.Context, Record) (string, string, int64, error)
 	Credit(context.Context, Record) error
 }
 
@@ -127,6 +128,17 @@ func view(r Record) *Session {
 	if (s.Status == "active" && now >= s.EndsAt) || (s.Status == "pending" && now >= r.Expires) {
 		s.Status = "expired"
 	}
+	s.NotificationStatus = "pending"
+	switch {
+	case r.NotifyURL == "":
+		s.NotificationStatus = "disabled"
+	case r.Delivered:
+		s.NotificationStatus = "delivered"
+	case r.DeliveryState == "sending" || r.DeliveryState == "uncertain":
+		s.NotificationStatus = "uncertain"
+	case r.DeliveryState == "failed":
+		s.NotificationStatus = "retrying"
+	}
 	return s
 }
 func Checkout(ctx context.Context, owner, agent, base string, p *Policy, secret string, q *pb.CheckoutRequest) (*Session, error) {
@@ -188,7 +200,7 @@ func Checkout(ctx context.Context, owner, agent, base string, p *Policy, secret 
 		query := returnURL.Query()
 		query.Set("session", id)
 		returnURL.RawQuery = query.Encode()
-		r = Record{Owner: owner, ReturnURL: returnURL.String(), NotifyURL: p.NotifyUrl, NotifySecret: secret, Expires: now + 3600,
+		r = Record{Owner: owner, ReturnURL: returnURL.String(), NotifyURL: p.NotifyUrl, NotifySecret: secret, Expires: now + 23*3600,
 			Session: &Session{Id: id, Agent: agent, Reference: q.Reference, Participants: q.Participants, Amount: p.Price * q.Participants, Currency: p.Currency, Credits: credits, Minutes: p.Minutes, Status: "pending", CreatedAt: now, CheckoutUrl: strings.TrimRight(base, "/") + "/pay/" + id}}
 		records[id] = r
 		// Persist before contacting Stripe so retries use the same key and amounts.
@@ -202,7 +214,7 @@ func Checkout(ctx context.Context, owner, agent, base string, p *Policy, secret 
 	if r.StripeID == "" {
 		// Do not block agent admission or Stripe webhooks during network I/O.
 		mu.Unlock()
-		id, link, checkoutErr := Backend.Checkout(ctx, clone(r))
+		id, link, expires, checkoutErr := Backend.Checkout(ctx, clone(r))
 		mu.Lock()
 		if checkoutErr != nil {
 			return nil, checkoutErr
@@ -220,7 +232,7 @@ func Checkout(ctx context.Context, owner, agent, base string, p *Policy, secret 
 		if r.StripeID != "" && r.StripeID != id {
 			return nil, errors.New("Stripe checkout changed")
 		}
-		r.StripeID, r.StripeURL = id, link
+		r.StripeID, r.StripeURL, r.Expires = id, link, expires
 		records[r.Session.Id] = r
 		if err := data.SaveJSON(file, records); err != nil {
 			return nil, err

@@ -41,4 +41,5 @@ message PaidSession {
   int64 started_at = 13;
   int64 ends_at = 14;
   string thread = 15;
+  string notification_status = 16; // disabled, pending, retrying, delivered, uncertain.
 }

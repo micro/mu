@@ -55,6 +55,20 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 			return
 		case "save", "":
+			if r.PostFormValue("profile_links_present") == "true" {
+				if auth.TokenFromRequest(r) != nil || !auth.StrictCSRF(r) {
+					w.WriteHeader(403)
+					_ = json.NewEncoder(w).Encode(map[string]string{"error": "Configure public links in agent settings"})
+					return
+				}
+				for _, raw := range []string{r.PostFormValue("website"), r.PostFormValue("booking_url")} {
+					if err := validPublicURL(raw); err != nil {
+						w.WriteHeader(400)
+						_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+						return
+					}
+				}
+			}
 			var policy *pay.Policy
 			if r.PostFormValue("pay_present") == "true" {
 				// The integration's agent token cannot modify billing policy.
@@ -135,6 +149,13 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 			if r.PostFormValue("profile_public") != "" {
 				if err := SetProfile(acc.ID, saved.ID, r.PostFormValue("profile_public") == "true"); err != nil {
 					app.BadRequest(w, r, err.Error())
+					return
+				}
+			}
+			if r.PostFormValue("profile_links_present") == "true" {
+				if err := SetLinks(acc.ID, saved.ID, r.PostFormValue("website"), r.PostFormValue("booking_url")); err != nil {
+					w.WriteHeader(400)
+					_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 					return
 				}
 			}
@@ -385,7 +406,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		profileHTML = `<p>Address: <a href="` + html.EscapeString(Path(acc.ID, a.ID)) + `">` + html.EscapeString(Path(acc.ID, a.ID)) + `</a></p>`
 	}
-	profileHTML += `<label><input type="checkbox" id="b-profile"` + checked + `> Public profile (name and description only)</label>`
+	profileHTML += `<label><input type="checkbox" id="b-profile"` + checked + `> Public profile (name, description, website and session price)</label>`
 	b := `<div class="page-col">
  <form id="bform" class="form" onsubmit="return bSave(event)">
  <input type="hidden" id="b-id" value="` + html.EscapeString(editID) + `">
@@ -393,7 +414,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		app.Field{ID: "b-name", Label: "Name", Max: 60, Required: true, Wide: true, Value: name}.HTML() +
 		app.Field{ID: "b-desc", Label: "Description", Max: 140, Wide: true, Value: desc}.HTML() +
 		app.Field{ID: "b-prompt", Label: "System prompt", Rows: 9, Required: true, Wide: true, Value: prompt}.HTML() +
-		app.ServiceSelect("b-scope", "b-service-list", "tool", scopeChoices) + modelHTML + profileHTML + payForm(acc.ID, editID) + `
+		app.ServiceSelect("b-scope", "b-service-list", "tool", scopeChoices) + modelHTML + profileHTML + profileLinksForm(acc.ID, editID) + payForm(acc.ID, editID) + `
  <div class="form-actions"><button type="submit" class="btn">Save agent</button><a href="/agents">Cancel</a></div>
  </form></div>
 
@@ -406,6 +427,9 @@ function bSave(e){e.preventDefault();
   b.append('name',document.getElementById('b-name').value);
   b.append('description',document.getElementById('b-desc').value);
   b.append('profile_public',document.getElementById('b-profile').checked?'true':'false');
+  b.append('profile_links_present','true');
+  b.append('website',document.getElementById('b-website').value);
+  b.append('booking_url',document.getElementById('b-booking').value);
   b.append('pay_present','true');
   b.append('pay_enabled',document.getElementById('b-pay').checked?'true':'false');
   ['price','currency','minutes','return','notify'].forEach(function(key){b.append('pay_'+key,document.getElementById('b-pay-'+key).value);});

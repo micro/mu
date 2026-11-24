@@ -156,6 +156,7 @@ const (
 	OpAppEdit       = "app_edit"
 	OpAppUse        = "app_use"
 	OpAppRevenue    = "app_revenue"
+	OpAgentRevenue  = "agent_revenue"
 	OpTopup         = "topup"
 	OpRefund        = "refund"
 	OpTransfer      = "transfer"

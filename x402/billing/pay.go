@@ -15,38 +15,40 @@ import (
 // account's Stripe customer. Money funds the existing account credit ledger.
 type Pay struct{}
 
-func (Pay) Checkout(ctx context.Context, r pay.Record) (string, string, error) {
+func (Pay) Checkout(ctx context.Context, r pay.Record) (string, string, int64, error) {
 	if !StripeEnabled() || stripeWebhook() == "" {
-		return "", "", errors.New("Mu Pay requires Stripe and a configured webhook")
+		return "", "", 0, errors.New("Mu Pay requires Stripe and a configured webhook")
 	}
 	s := r.Session
+	// Leave expires_at unset: Stripe supplies a fresh 24-hour deadline on creation.
+	// Identical retries recover its cached session even after a lost response.
 	form := url.Values{
-		"mode":                                   {"payment"},
-		"payment_method_types[0]":                {"card"},
-		"success_url":                            {s.CheckoutUrl + "?return=1"},
-		"cancel_url":                             {r.ReturnURL},
-		"expires_at":                             {fmt.Sprint(r.Expires)},
-		"line_items[0][quantity]":                {fmt.Sprint(s.Participants)},
-		"line_items[0][price_data][currency]":    {s.Currency},
-		"line_items[0][price_data][unit_amount]": {fmt.Sprint(s.Amount / s.Participants)},
-		"line_items[0][price_data][product_data][name]":        {"Private agent session"},
+		"mode":                                          {"payment"},
+		"payment_method_types[0]":                       {"card"},
+		"success_url":                                   {s.CheckoutUrl + "?return=1"},
+		"cancel_url":                                    {r.ReturnURL},
+		"line_items[0][quantity]":                       {fmt.Sprint(s.Participants)},
+		"line_items[0][price_data][currency]":           {s.Currency},
+		"line_items[0][price_data][unit_amount]":        {fmt.Sprint(s.Amount / s.Participants)},
+		"line_items[0][price_data][product_data][name]": {"Private agent session"},
 		"line_items[0][price_data][product_data][description]": {fmt.Sprintf("%d minutes per session; starts when the host presses Start", s.Minutes)},
 		"metadata[mu_pay]": {s.Id}, "metadata[owner]": {r.Owner}, "metadata[agent]": {s.Agent},
 	}
 	var out struct {
-		ID  string `json:"id"`
-		URL string `json:"url"`
+		Expires int64  `json:"expires_at"`
+		ID      string `json:"id"`
+		URL     string `json:"url"`
 	}
 	if err := stripeRequest(ctx, "POST", "checkout/sessions", form, "mu-pay-"+s.Id, &out); err != nil {
-		return "", "", err
+		return "", "", 0, err
 	}
-	if out.ID == "" || out.URL == "" {
-		return "", "", errors.New("Stripe returned no checkout")
+	if out.ID == "" || out.URL == "" || out.Expires <= 0 {
+		return "", "", 0, errors.New("Stripe returned no checkout")
 	}
-	return out.ID, out.URL, nil
+	return out.ID, out.URL, out.Expires, nil
 }
 func (Pay) Credit(ctx context.Context, r pay.Record) error {
-	_, err := CreditOnce(r.Owner, int(r.Session.Credits), quota.OpTopup, "mu-pay:"+r.StripeID, map[string]any{"source": "mu_pay", "session": r.Session.Id, "amount": r.Session.Amount, "currency": r.Session.Currency})
+	_, err := CreditOnce(r.Owner, int(r.Session.Credits), quota.OpAgentRevenue, "mu-pay:"+r.StripeID, map[string]any{"source": "mu_pay", "session": r.Session.Id, "amount": r.Session.Amount, "currency": r.Session.Currency})
 	return err
 }
 func payEvent(ctx context.Context, kind, account string, raw json.RawMessage) (bool, error) {

@@ -43,7 +43,7 @@ func TestMuPayCheckoutWebhookAndLedgerRecovery(t *testing.T) {
 		if r.Header.Get("Idempotency-Key") != "mu-pay-"+id {
 			t.Fatal("no stable retry key")
 		}
-		return stripeResponse(map[string]string{"id": "cs_" + id, "url": "https://checkout.stripe.com/c/pay/test"}), nil
+		return stripeResponse(map[string]any{"id": "cs_" + id, "url": "https://checkout.stripe.com/c/pay/test", "expires_at": time.Now().Add(24 * time.Hour).Unix()}), nil
 	})}
 	policy := &pay.Policy{Enabled: true, Price: 300, Currency: "gbp", Minutes: 60, ReturnUrl: "https://malten.me/session"}
 	q := &pb.CheckoutRequest{Reference: "billing-recovery", Participants: 3}
@@ -69,6 +69,9 @@ func TestMuPayCheckoutWebhookAndLedgerRecovery(t *testing.T) {
 		return w.Code
 	}
 	before := Balance(acc.ID)
+	if Paid(acc.ID) {
+		t.Fatal("fixture is already personally funded")
+	}
 	if send(false) != 400 || Balance(acc.ID) != before {
 		t.Fatal("unsigned payment accepted")
 	}
@@ -104,6 +107,14 @@ func TestMuPayCheckoutWebhookAndLedgerRecovery(t *testing.T) {
 	if Balance(acc.ID) != before+900 {
 		t.Fatalf("payment credited more than once: %d", Balance(acc.ID))
 	}
+	if Paid(acc.ID) {
+		t.Fatal("agent revenue granted personally-funded privileges")
+	}
+	for _, tx := range Transactions(acc.ID, 20) {
+		if tx.Metadata["source"] == "mu_pay" && TransactionLabel(tx) != "Agent revenue" {
+			t.Fatal("guest payment shown as personal top-up")
+		}
+	}
 	restored, e := pay.Read(acc.ID, "malten", s.Id)
 	if e != nil || restored.Status != "paid" || restored.EndsAt != 0 {
 		t.Fatal("receipt recovery", restored, e)
@@ -115,5 +126,81 @@ func TestMuPayCheckoutWebhookAndLedgerRecovery(t *testing.T) {
 	active, e := pay.Start(acc.ID, "malten", s.Id)
 	if e != nil || active.EndsAt-active.StartedAt != 3600 {
 		t.Fatal(fmt.Sprint(active, e))
+	}
+}
+
+func TestMuPayLateCheckoutRetry(t *testing.T) {
+	for _, created := range []bool{false, true} {
+		t.Run(fmt.Sprintf("created_before_timeout_%t", created), func(t *testing.T) {
+			acc := subscriptionFixture(t)
+			old := pay.Backend
+			pay.Backend = Pay{}
+			t.Cleanup(func() { pay.Backend = old })
+			attempts, creations := 0, 0
+			firstForm, firstKey := "", ""
+			expires := time.Now().Add(24 * time.Hour).Unix()
+			billingHTTP = &http.Client{Transport: stripeTransport(func(r *http.Request) (*http.Response, error) {
+				attempts++
+				if e := r.ParseForm(); e != nil {
+					t.Fatal(e)
+				}
+				if r.Form.Get("expires_at") != "" {
+					t.Fatal("retry carries a stale absolute expiry")
+				}
+				key := r.Header.Get("Idempotency-Key")
+				form := r.Form.Encode()
+				if attempts == 1 {
+					firstKey, firstForm = key, form
+					if created {
+						creations++
+					}
+					return nil, fmt.Errorf("lost connection")
+				}
+				if firstKey != key || firstForm != form {
+					t.Fatal("retry changed Stripe idempotency parameters")
+				}
+				if !created {
+					creations++
+				}
+				return stripeResponse(map[string]any{"id": "cs_" + r.Form.Get("metadata[mu_pay]"), "url": "https://checkout.stripe.com/c/pay/test", "expires_at": expires}), nil
+			})}
+			policy := &pay.Policy{Enabled: true, Price: 300, Currency: "gbp", Minutes: 60, ReturnUrl: "https://malten.me/session"}
+			q := &pb.CheckoutRequest{Reference: "late-retry", Participants: 3}
+			if _, e := pay.Checkout(context.Background(), acc.ID, "malten", "https://micro.mu", policy, "", q); e == nil {
+				t.Fatal("expected timeout")
+			}
+			var records map[string]pay.Record
+			if e := data.LoadJSON("pay/sessions.json", &records); e != nil {
+				t.Fatal(e)
+			}
+			id := ""
+			for k, r := range records {
+				if r.Owner == acc.ID {
+					r.Session.CreatedAt = time.Now().Add(-40 * time.Minute).Unix()
+					r.Expires = time.Now().Add(20 * time.Minute).Unix()
+					records[k] = r
+					id = k
+				}
+			}
+			if id == "" {
+				t.Fatal("pending checkout not saved")
+			}
+			if e := data.SaveJSON("pay/sessions.json", records); e != nil {
+				t.Fatal(e)
+			}
+			s, e := pay.Checkout(context.Background(), acc.ID, "malten", "https://micro.mu", policy, "", q)
+			if e != nil || s.Id != id {
+				t.Fatal("late retry failed", s, e)
+			}
+			if e = data.LoadJSON("pay/sessions.json", &records); e != nil {
+				t.Fatal(e)
+			}
+			if records[id].Expires != expires {
+				t.Fatal("Stripe expiry not retained")
+			}
+			if _, e = pay.Checkout(context.Background(), acc.ID, "malten", "https://micro.mu", policy, "", q); e != nil || attempts != 2 || creations != 1 {
+				t.Fatal("duplicate purchase", attempts, creations, e)
+			}
+		})
 	}
 }

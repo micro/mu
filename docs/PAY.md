@@ -10,6 +10,8 @@ owner's Mu usage. A £3 place grants **300 credits**; three places cost £9 and 
 900 credits. This is a fixed product rate, not a live exchange rate. USD purchases
 retain the existing rate of one credit per cent. Model and tool usage is charged
 to the owner's balance normally; buying an hour is not an unlimited model budget.
+Guest payments are recorded as agent revenue, so they do not mark an unfunded
+owner as personally paid or grant paid-account trust privileges.
 There are no connected seller accounts or cash payouts in this release.
 
 ## Configure
@@ -36,6 +38,23 @@ pound. Mu rounds each place's credit grant down to a whole credit. Checkout stor
 the price, quantity, duration, credit grant, return URL and notification secret;
 changes apply only to new bookings. Back up the runtime's data directory,
 including `pay/sessions.json` and the existing billing ledger together.
+
+## Public profile and groups
+
+Enable **Public profile** and set **Website** in Edit agent to link visitors to
+the app where the agent is used. The profile shows that domain even when Mu Pay
+is disabled. When enabled, it shows the saved price and duration, for example
+“Talk to Malten privately · £3 per person for one hour”, and **Book a private
+session** links to the website. Set the optional **Booking page** only if the
+app has a separate booking address. Guests need no Mu login to follow either
+link. These public links never expose the checkout return URL, callback URL,
+signing secret or an individual booking.
+
+A private session can be for one person or several booked places. The app hosts
+the conversation and controls admission; creating a Mu group is optional. A
+standing group may book a fresh session each week while retaining its members
+and invitations. Charging for ongoing membership is a separate offering and is
+not implemented by Mu Pay.
 
 ## Application flow
 
@@ -83,8 +102,11 @@ containing letters, digits, `_` or `-`. Participant count is 1–100.
 
 Retry an ambiguous checkout request with the same reference and participant
 count. Mu reuses the same purchase and Stripe idempotency key, including after a
-restart. A changed participant count is rejected. Pending checkouts expire after
-one hour; use a new booking reference after expiry. Retrying an old booking never
+restart. A changed participant count is rejected. Checkout uses Stripe’s default 24-hour expiry from creation, and Mu stores
+the actual deadline returned by Stripe. A failed creation can be retried for
+23 hours from the original request, within Stripe’s idempotency retention
+window; retries reuse identical parameters, without a stale absolute expiry.
+Use a new booking reference after expiry. Retrying an old booking never
 creates an extra purchase. A reference is scoped to owner and agent, not a token,
 so rotating the token does not lose recovery.
 
@@ -147,7 +169,11 @@ The session is a time entitlement, not isolation from the agent's configured
 knowledge, memory or services. Scope the agent's tools for its intended audience.
 
 Normal private **Ask Malten** calls use neither the paid session nor its thread.
-Public `@malten` requests continue using `public_only: true`. Neither requires a
+Malten’s existing public `@malten` flow sends `prompt`, the stream’s saved
+`thread` on follow-ups, and `context.messages`, without a paid `session`. It
+remains a normal threaded agent call: the app controls who sees the response.
+Do not add `public_only: true` to that flow, because Mu’s separate restricted
+public mode is stateless and rejects `thread`. Neither existing flow requires a
 booking. A paid call cannot also set `public_only`.
 
 ## Payment notifications
@@ -177,8 +203,12 @@ quantity to the stored booking. Keep server clocks synchronized.
 
 Persist the receipt and grant the booked places atomically before returning a
 2xx response. Deduplicate by `id` (and keep `payment` for support). Every retry
-has a fresh timestamp/signature but the same purchase. Failed deliveries retry
-with backoff and resume after restart. Redirects are not followed; callbacks
+has a fresh timestamp/signature but the same purchase. A durable attempt is reserved before sending. A known non-2xx HTTP response
+retries with backoff. A transport error or crash before acknowledgement is
+recorded as uncertain and is **not automatically replayed**. Session reads expose
+`notification_status` (`disabled`, `pending`, `retrying`, `delivered`, or
+`uncertain`); use the authenticated read to reconcile uncertain delivery with
+the app’s stored booking instead of sending the receipt again. Redirects are not followed; callbacks
 cannot target private network addresses. Authenticated GET provides recovery if
 your application missed a receipt. Notifications confirm payment, not Start.
 

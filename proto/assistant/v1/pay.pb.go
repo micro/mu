@@ -204,24 +204,25 @@ func (x *PaidSessionRequest) GetId() string {
 }
 
 type PaidSession struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Agent         string                 `protobuf:"bytes,2,opt,name=agent,proto3" json:"agent,omitempty"` // Immutable agent ID.
-	Reference     string                 `protobuf:"bytes,3,opt,name=reference,proto3" json:"reference,omitempty"`
-	Participants  int32                  `protobuf:"varint,4,opt,name=participants,proto3" json:"participants,omitempty"`
-	Amount        int32                  `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
-	Currency      string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
-	Credits       int32                  `protobuf:"varint,7,opt,name=credits,proto3" json:"credits,omitempty"`
-	Minutes       int32                  `protobuf:"varint,8,opt,name=minutes,proto3" json:"minutes,omitempty"`
-	Status        string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`                               // pending, paid, active, expired.
-	CheckoutUrl   string                 `protobuf:"bytes,10,opt,name=checkout_url,json=checkoutUrl,proto3" json:"checkout_url,omitempty"` // Mu Pay URL.
-	CreatedAt     int64                  `protobuf:"varint,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`      // Unix seconds.
-	PaidAt        int64                  `protobuf:"varint,12,opt,name=paid_at,json=paidAt,proto3" json:"paid_at,omitempty"`
-	StartedAt     int64                  `protobuf:"varint,13,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	EndsAt        int64                  `protobuf:"varint,14,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
-	Thread        string                 `protobuf:"bytes,15,opt,name=thread,proto3" json:"thread,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Agent              string                 `protobuf:"bytes,2,opt,name=agent,proto3" json:"agent,omitempty"` // Immutable agent ID.
+	Reference          string                 `protobuf:"bytes,3,opt,name=reference,proto3" json:"reference,omitempty"`
+	Participants       int32                  `protobuf:"varint,4,opt,name=participants,proto3" json:"participants,omitempty"`
+	Amount             int32                  `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	Currency           string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
+	Credits            int32                  `protobuf:"varint,7,opt,name=credits,proto3" json:"credits,omitempty"`
+	Minutes            int32                  `protobuf:"varint,8,opt,name=minutes,proto3" json:"minutes,omitempty"`
+	Status             string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`                               // pending, paid, active, expired.
+	CheckoutUrl        string                 `protobuf:"bytes,10,opt,name=checkout_url,json=checkoutUrl,proto3" json:"checkout_url,omitempty"` // Mu Pay URL.
+	CreatedAt          int64                  `protobuf:"varint,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`      // Unix seconds.
+	PaidAt             int64                  `protobuf:"varint,12,opt,name=paid_at,json=paidAt,proto3" json:"paid_at,omitempty"`
+	StartedAt          int64                  `protobuf:"varint,13,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	EndsAt             int64                  `protobuf:"varint,14,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
+	Thread             string                 `protobuf:"bytes,15,opt,name=thread,proto3" json:"thread,omitempty"`
+	NotificationStatus string                 `protobuf:"bytes,16,opt,name=notification_status,json=notificationStatus,proto3" json:"notification_status,omitempty"` // disabled, pending, retrying, delivered, uncertain.
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *PaidSession) Reset() {
@@ -359,6 +360,13 @@ func (x *PaidSession) GetThread() string {
 	return ""
 }
 
+func (x *PaidSession) GetNotificationStatus() string {
+	if x != nil {
+		return x.NotificationStatus
+	}
+	return ""
+}
+
 var File_assistant_v1_pay_proto protoreflect.FileDescriptor
 
 const file_assistant_v1_pay_proto_rawDesc = "" +
@@ -377,7 +385,7 @@ const file_assistant_v1_pay_proto_rawDesc = "" +
 	"\treference\x18\x01 \x01(\tR\treference\x12\"\n" +
 	"\fparticipants\x18\x02 \x01(\x05R\fparticipants\"$\n" +
 	"\x12PaidSessionRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xa0\x03\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xd1\x03\n" +
 	"\vPaidSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05agent\x18\x02 \x01(\tR\x05agent\x12\x1c\n" +
@@ -396,7 +404,8 @@ const file_assistant_v1_pay_proto_rawDesc = "" +
 	"\n" +
 	"started_at\x18\r \x01(\x03R\tstartedAt\x12\x17\n" +
 	"\aends_at\x18\x0e \x01(\x03R\x06endsAt\x12\x16\n" +
-	"\x06thread\x18\x0f \x01(\tR\x06thread2\xf1\x01\n" +
+	"\x06thread\x18\x0f \x01(\tR\x06thread\x12/\n" +
+	"\x13notification_status\x18\x10 \x01(\tR\x12notificationStatus2\xf1\x01\n" +
 	"\fPaidSessions\x12J\n" +
 	"\bCheckout\x12 .mu.assistant.v1.CheckoutRequest\x1a\x1c.mu.assistant.v1.PaidSession\x12I\n" +
 	"\x04Read\x12#.mu.assistant.v1.PaidSessionRequest\x1a\x1c.mu.assistant.v1.PaidSession\x12J\n" +

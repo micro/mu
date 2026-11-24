@@ -17,8 +17,8 @@ import (
 
 type testPay struct{}
 
-func (testPay) Checkout(_ context.Context, r pay.Record) (string, string, error) {
-	return "cs_" + r.Session.Id, "https://checkout.stripe.com/c/pay/test", nil
+func (testPay) Checkout(_ context.Context, r pay.Record) (string, string, int64, error) {
+	return "cs_" + r.Session.Id, "https://checkout.stripe.com/c/pay/test", time.Now().Add(24 * time.Hour).Unix(), nil
 }
 func (testPay) Credit(context.Context, pay.Record) error { return nil }
 
@@ -139,6 +139,14 @@ func TestMuPayAgentAPIAndNormalChat(t *testing.T) {
 	}
 	if calls != 3 {
 		t.Fatal("ordinary chat did not run")
+	}
+	var ordinary apiAnswer
+	if e := json.Unmarshal(w.Body.Bytes(), &ordinary); e != nil || ordinary.Thread == "" {
+		t.Fatal("normal stream missing thread", e)
+	}
+	// Malten mentions use ordinary threaded calls, not public_only.
+	if w = ask("", ordinary.Thread); w.Code != 200 || calls != 4 {
+		t.Fatal("normal stream follow-up blocked", w.Code, w.Body.String())
 	}
 	// Integration tokens cannot edit the owner's billing policy through the form.
 	r := httptest.NewRequest("POST", "/agents/data", strings.NewReader("action=save&id="+a.ID+"&pay_present=true&pay_enabled=true&pay_price=1"))

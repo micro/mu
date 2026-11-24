@@ -413,7 +413,7 @@ func Paid(userID string) bool {
 			if tx == nil || tx.Type != TxTopup || tx.Amount <= 0 {
 				continue
 			}
-			if isWelcome(tx) || tx.Operation == quota.OpAppRevenue || tx.Operation == quota.OpTransfer {
+			if isWelcome(tx) || tx.Operation == quota.OpAppRevenue || tx.Operation == quota.OpAgentRevenue || tx.Operation == quota.OpTransfer {
 				continue
 			}
 			return true

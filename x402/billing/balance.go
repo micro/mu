@@ -66,6 +66,8 @@ func TransactionLabel(tx *Transaction) string {
 			return "App: " + appSlug
 		}
 		return "App usage"
+	case tx.Operation == quota.OpAgentRevenue:
+		return "Agent revenue"
 	case tx.Operation == quota.OpAppRevenue:
 		if appSlug, ok := tx.Metadata["app"].(string); ok {
 			return "Earned: " + appSlug

@@ -757,5 +757,7 @@ Agent URL names are reserved server-wide in agent/names.go, independently of
 display names and owner-scoped mail tags. Keep reservations after deletion.
 Resolve the reserved identity before checking the caller's execution permission;
 never fall back to another account's agent with the same display name.
-Public profiles are opt-in projections of name and description only. Keep the
-underlying userdb agent record private, including its prompt and credentials.
+Public profiles are opt-in projections of name, description, owner-selected HTTPS
+website/booking links and enabled Mu Pay price/duration. Keep the underlying
+userdb agent record private, including its prompt, credentials, checkout return
+URL, callback URL and notification signing secret.

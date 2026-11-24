@@ -28,14 +28,14 @@ type fakeProvider struct {
 	keys           []string
 }
 
-func (f *fakeProvider) Checkout(_ context.Context, r Record) (string, string, error) {
+func (f *fakeProvider) Checkout(_ context.Context, r Record) (string, string, int64, error) {
 	f.calls++
 	f.keys = append(f.keys, r.Session.Id)
 	if f.fail {
 		f.fail = false
-		return "", "", errors.New("connection lost")
+		return "", "", 0, errors.New("connection lost")
 	}
-	return "cs_" + r.Session.Id, "https://checkout.stripe.com/c/pay/test", nil
+	return "cs_" + r.Session.Id, "https://checkout.stripe.com/c/pay/test", time.Now().Add(24 * time.Hour).Unix(), nil
 }
 func (f *fakeProvider) Credit(_ context.Context, r Record) error {
 	f.credits += int(r.Session.Credits)
@@ -298,5 +298,59 @@ func TestPublicReturnCannotConfirmPayment(t *testing.T) {
 	}
 	if strings.Contains(w.Body.String(), "browser-return") {
 		t.Fatal("public page leaked app booking reference")
+	}
+}
+
+func TestReceiptReservationSurvivesInterruptedDelivery(t *testing.T) {
+	fixture(t)
+	s := checkout(t, "interrupted")
+	if e := Settle(context.Background(), payment(s)); e != nil {
+		t.Fatal(e)
+	}
+	calls := 0
+	fetch := func(context.Context, string, safefetch.Options) (*safefetch.Response, error) {
+		calls++
+		records, e := load()
+		if e != nil || records[s.Id].DeliveryState != "sending" || records[s.Id].Attempts != 1 {
+			t.Fatal("attempt not reserved before send", e)
+		}
+		// A second worker sees the reservation and must not deliver in parallel.
+		deliver(context.Background(), func(context.Context, string, safefetch.Options) (*safefetch.Response, error) {
+			t.Fatal("concurrent duplicate")
+			return nil, nil
+		})
+		panic("process stopped after receiver accepted")
+	}
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("expected simulated crash")
+			}
+		}()
+		deliver(context.Background(), fetch)
+	}()
+	deliver(context.Background(), fetch)
+	recovered, e := Read("owner", "agent", s.Id)
+	if e != nil || recovered.Status != "paid" || recovered.NotificationStatus != "uncertain" || calls != 1 {
+		t.Fatal("ambiguous attempt replayed or booking lost", recovered, e, calls)
+	}
+}
+
+func TestTransportFailureIsNotReplayed(t *testing.T) {
+	fixture(t)
+	s := checkout(t, "transport-error")
+	if e := Settle(context.Background(), payment(s)); e != nil {
+		t.Fatal(e)
+	}
+	calls := 0
+	fetch := func(context.Context, string, safefetch.Options) (*safefetch.Response, error) {
+		calls++
+		return nil, errors.New("response lost after write")
+	}
+	deliver(context.Background(), fetch)
+	deliver(context.Background(), fetch)
+	state, e := Read("owner", "agent", s.Id)
+	if e != nil || state.NotificationStatus != "uncertain" || calls != 1 {
+		t.Fatal("uncertain transport replayed", state, e, calls)
 	}
 }

@@ -73,7 +73,8 @@ func StartDelivery() {
 	})
 }
 
-// Deliver retries signed receipts until acknowledged. Receivers deduplicate by
+// Deliver retries known HTTP failures; uncertain attempts require reconciliation.
+// Receivers deduplicate by
 // session id; the same id always describes the same payment and purchase.
 func Deliver(ctx context.Context) {
 	deliver(ctx, safefetch.Fetch)
@@ -86,13 +87,34 @@ func deliver(ctx context.Context, fetch func(context.Context, string, safefetch.
 	now := time.Now().Unix()
 	if err == nil {
 		for _, r := range records {
-			if r.Session.PaidAt > 0 && !r.Delivered && r.NotifyURL != "" && r.NextDelivery <= now {
+			if r.Session.PaidAt > 0 && !r.Delivered && r.NotifyURL != "" && r.NextDelivery <= now && (r.DeliveryState == "" || r.DeliveryState == "failed") {
 				due = append(due, clone(r))
 			}
 		}
 	}
 	mu.Unlock()
 	for _, r := range due {
+		// Reserve each external attempt durably, rechecking under the lock so
+		// concurrent workers cannot dispatch the same receipt. A crash leaves
+		// "sending", which is uncertain and must not be replayed automatically.
+		mu.Lock()
+		currentRecords, loadErr := load()
+		current, exists := currentRecords[r.Session.Id]
+		if loadErr != nil || !exists || current.Delivered || (current.DeliveryState != "" && current.DeliveryState != "failed") || current.NextDelivery > time.Now().Unix() {
+			mu.Unlock()
+			continue
+		}
+		current.Attempts++
+		current.DeliveryState = "sending"
+		currentRecords[r.Session.Id] = current
+		saveErr := data.SaveJSON(file, currentRecords)
+		mu.Unlock()
+		if saveErr != nil {
+			app.Log("pay", "reserve receipt delivery: %v", saveErr)
+			continue
+		}
+		r = clone(current)
+
 		receipt := map[string]any{"id": r.Session.Id, "payment": r.StripeID, "reference": r.Session.Reference, "agent": r.Session.Agent, "participants": r.Session.Participants, "amount": r.Session.Amount, "currency": r.Session.Currency, "credits": r.Session.Credits, "paid_at": r.Session.PaidAt}
 		body, _ := json.Marshal(receipt)
 		timestamp := fmt.Sprint(time.Now().Unix())
@@ -104,8 +126,16 @@ func deliver(ctx context.Context, fetch func(context.Context, string, safefetch.
 		mu.Lock()
 		records, loadErr := load()
 		if current, ok := records[r.Session.Id]; loadErr == nil && ok {
-			current.Attempts++
 			current.Delivered = current.Delivered || success
+			switch {
+			case success:
+				current.DeliveryState = "delivered"
+			case err != nil || response == nil:
+				current.DeliveryState = "uncertain"
+				app.Log("pay", "receipt delivery uncertain for session %s; recover by authenticated session read", r.Session.Id)
+			default:
+				current.DeliveryState = "failed"
+			}
 			delay := time.Duration(1<<min(current.Attempts, 10)) * 30 * time.Second
 			current.NextDelivery = time.Now().Add(delay).Unix()
 			records[r.Session.Id] = current
