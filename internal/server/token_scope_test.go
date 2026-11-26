@@ -97,6 +97,15 @@ func TestMuPayProductTokenRoutes(t *testing.T) {
 		method, path string
 		want         bool
 	}{
+		{"GET", "/agent/malten/app/profile", true},
+		{"GET", "/agent/malten/app/sessions", true},
+		{"POST", "/agent/malten/app/threads", true},
+		{"POST", "/agent/malten/app/history", true},
+		{"POST", "/agent/malten/app/chat", true},
+		{"GET", "/agent/malten/app/session/booking", true},
+		{"POST", "/agent/malten/app/session/booking", true},
+		{"POST", "/agent/malten/app/settings", false},
+		{"POST", "/agent/malten/app/checkout", false},
 		{"POST", "/agent/malten/pay", true},
 		{"GET", "/agent/malten/pay/booking-1", true},
 		{"POST", "/agent/malten/pay/booking-1/start", true},

@@ -20,6 +20,7 @@ package auth
 import (
 	"errors"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -104,11 +105,13 @@ func loopback(u *url.URL) bool {
 // Localhost or HTTPS, which is what the MCP authorization spec requires. An
 // http:// address anywhere else is a code travelling in clear text, and there
 // is no reason to accept one that is not simply a mistake.
-// Native callbacks are an explicit allowlist, not permission to register arbitrary
-// app schemes. PKCE remains mandatory for these public clients.
+// Native callbacks use fixed Mu schemes or the bounded branded-app namespace.
+// Registration still binds an exact redirect, and S256 PKCE is mandatory.
+var brandedRedirect = regexp.MustCompile(`^mu\.micro\.agent\.[a-z][a-z0-9]{0,63}(\.debug)?://oauth/callback$`)
+
 func nativeRedirect(raw string) bool {
 	return raw == "mu.client.android://oauth/callback" ||
-		raw == "mu.client.android.debug://oauth/callback"
+		raw == "mu.client.android.debug://oauth/callback" || brandedRedirect.MatchString(raw)
 }
 
 func RegisterableRedirect(raw string) bool {

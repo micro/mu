@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
     private long speechEpoch;
     private boolean voiceRequest, controlsOnly;
     private JSONArray agents = new JSONArray();
-    private boolean agentAvailable, agentLinkPending, launchHandled;
+    private boolean agentAvailable, agentLinkPending, launchHandled, appPaid;
     private String agentName = "Micro", agentDescription = "A personal assistant";
     private Button agentPicker;
     private TextView description;
@@ -84,6 +84,7 @@ public class MainActivity extends Activity {
         AgentApi.vault = vault;
         try { account = vault.read(); }
         catch (Exception e) { vault.clear(); }
+        configureBrand();
         agent = account.optString("agent", "micro");
         agentName = account.optString("agent_name", agent.equals("micro") ? "Micro" : agent);
         agentDescription = account.optString("agent_description", agent.equals("micro") ? "A personal assistant" : "");
@@ -163,8 +164,8 @@ public class MainActivity extends Activity {
     private void update() {
         if (destroyed) return;
         if (agentPicker != null) {
-            agentPicker.setText(agentName); agentPicker.setEnabled(!busy);
-            agentPicker.setContentDescription("Change agent. Current agent: " + agentName);
+            agentPicker.setText(agentName); agentPicker.setEnabled(!busy && !BuildConfig.BRANDED);
+            agentPicker.setContentDescription(BuildConfig.BRANDED ? agentName : "Change agent. Current agent: " + agentName);
             description.setText(agentDescription);
             prompt.setHint("Message " + agentName);
         }
@@ -193,6 +194,7 @@ public class MainActivity extends Activity {
     private void send() {
         if (busy || !signedIn()) { if (!signedIn()) connection(); return; }
         if (!agentAvailable) { status.setText("Choose an available agent first."); return; }
+        if (BuildConfig.BRANDED && appPaid && account.optString("paid_session").isEmpty()) { privateSessions(); return; }
         String text = prompt.getText().toString().trim();
         if (text.isEmpty()) return;
         dismissKeyboard();
@@ -444,6 +446,7 @@ public class MainActivity extends Activity {
         } catch (Exception e) { status.setText("Could not save your selected agent on this device."); }
     }
     void selectAgent(String slug, String name, String about) {
+        if (BuildConfig.BRANDED) return;
         if (busy) return;
         cancelRead(); persistSelection(); stopAudio(); video.close(); wake.setChecked(false);
         agent = AgentApi.agent(slug); agentAvailable = true; agentName = name; agentDescription = about;
@@ -538,15 +541,20 @@ public class MainActivity extends Activity {
                             String previous = agent;
                             agent = item.optString("id", item.optString("slug"));
                             if (!previous.equals(agent) && account.optJSONObject("threads") != null && thread.isEmpty()) thread = account.optJSONObject("threads").optString(agent);
+                            appPaid = item.optBoolean("paid");
                             agentName = item.optString("name", agent); agentDescription = item.optString("description"); found = true; break;
                         }
                     }
                     agentAvailable = found;
-                    if (found) persistSelection();
-                    else status.setText("This agent is not available to this account. Tap its name to choose another.");
+                    if (found) {
+                        persistSelection();
+                        if (BuildConfig.BRANDED && appPaid && account.optString("paid_session").isEmpty())
+                            status.setText("Open Account → Private sessions to start or resume a session.");
+                    }
+                    else status.setText(BuildConfig.BRANDED ? "This app is no longer available." : "This agent is not available to this account. Tap its name to choose another.");
                     update();
                     if (found && !choose && !thread.isEmpty()) restoreChat("", true);
-                    if (choose) {
+                    if (choose && !BuildConfig.BRANDED) {
                         String[] labels = new String[agents.length()];
                         for (int i = 0; i < agents.length(); i++) {
                             JSONObject item = agents.optJSONObject(i);
@@ -621,9 +629,81 @@ public class MainActivity extends Activity {
     private Uri agentLink() {
         return new Uri.Builder().scheme("micro-agent").authority("open").appendQueryParameter("server", account.optString("server", "https://micro.mu")).appendQueryParameter("agent", agent).build();
     }
+    private void configureBrand() {
+        if (!BuildConfig.BRANDED) return;
+        try {
+            if (!account.optString("server", BuildConfig.FIXED_SERVER).equals(BuildConfig.FIXED_SERVER)) {
+                vault.clear(); account = new JSONObject();
+            }
+            account.put("server", BuildConfig.FIXED_SERVER);
+            if (account.optString("agent").isEmpty()) account.put("agent", BuildConfig.FIXED_AGENT);
+            account.put("agent_name", BuildConfig.APP_NAME);
+        } catch (Exception e) { throw new IllegalStateException(e); }
+    }
+    private void privateSessions() {
+        busy = true; update();
+        final String server = account.optString("server"), token = account.optString("client", account.optString("token"));
+        worker.execute(() -> {
+            try {
+                JSONArray sessions = AppApi.sessions(server, token).getJSONArray("sessions");
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    busy = false; update();
+                    if (sessions.length() == 0) {
+                        new AlertDialog.Builder(this).setTitle("Private sessions")
+                            .setMessage("You have no available sessions on this account.").setPositiveButton("Close", null).show(); return;
+                    }
+                    String[] labels = new String[sessions.length()];
+                    for (int i=0; i<labels.length; i++) {
+                        JSONObject session = sessions.optJSONObject(i);
+                        labels[i] = session.optInt("minutes") + " minutes · " + session.optString("status")
+                            + (session.optString("status").equals("active") ? " · ends " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date(session.optLong("endsAt") * 1000)) : "");
+                    }
+                    new AlertDialog.Builder(this).setTitle("Private sessions").setItems(labels, (d, i) -> {
+                        JSONObject session = sessions.optJSONObject(i);
+                        if (session.optString("status").equals("active")) activateSession(session.optString("id"));
+                        else new AlertDialog.Builder(this).setTitle("Start private session?")
+                            .setMessage("Your " + session.optInt("minutes") + " minutes begin now and continue while the app is closed.")
+                            .setPositiveButton("Start", (confirm, which) -> activateSession(session.optString("id")))
+                            .setNegativeButton("Cancel", null).show();
+                    }).setNegativeButton("Close", null).show();
+                });
+            } catch (Exception e) { runOnUiThread(() -> { if (!destroyed) { busy = false; update(); status.setText(e.getMessage()); } }); }
+        });
+    }
+    private void activateSession(String id) {
+        busy = true; update();
+        final String server = account.optString("server"), token = account.optString("client", account.optString("token"));
+        worker.execute(() -> {
+            try {
+                JSONObject session = AppApi.start(server, token, id);
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    busy = false;
+                    try {
+                        account.put("paid_session", id);
+                        thread = session.optString("thread");
+                        persistSelection(); messages.removeAllViews(); displayedMessages.clear();
+                        update(); status.setText("Private session active");
+                        if (!thread.isEmpty()) restoreChat("", true);
+                    } catch (Exception e) { status.setText("Could not save the selected session."); update(); }
+                });
+            } catch (Exception e) { runOnUiThread(() -> { if (!destroyed) { busy = false; update(); status.setText(e.getMessage()); } }); }
+        });
+    }
     private void connection() {
         if (busy) return;
         stopAudio();
+        if (BuildConfig.BRANDED) {
+            if (!signedIn()) new AlertDialog.Builder(this).setTitle("Sign in to " + BuildConfig.APP_NAME)
+                .setMessage("Use your customer account. Your chats and private sessions belong to you.")
+                .setPositiveButton("Sign in", (d, w) -> beginSignIn(BuildConfig.FIXED_SERVER)).setNegativeButton("Cancel", null).show();
+            else new AlertDialog.Builder(this).setTitle(BuildConfig.APP_NAME)
+                .setItems(new String[]{"Private sessions", "Wake aliases", "Sign out"}, (d, i) -> {
+                    if (i == 0) privateSessions(); else if (i == 1) wakeAliases(); else signOut();
+                }).setNegativeButton("Close", null).show();
+            return;
+        }
         AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(signedIn() ? "Account" : "Start talking to " + agentName);
         if (!signedIn()) {
             dialog.setMessage(agentDescription + "\n\nSign in with your existing account, or create one in your browser.")
@@ -670,6 +750,7 @@ public class MainActivity extends Activity {
         }).setNegativeButton("Close", null).show();
     }
     private boolean openAgentLink(Intent intent) {
+        if (BuildConfig.BRANDED) return false;
         Uri uri = intent.getData();
         if (uri == null || !"micro-agent".equals(uri.getScheme())) return false;
         launchHandled = true;
@@ -698,6 +779,7 @@ public class MainActivity extends Activity {
         return true;
     }
     private void advancedConnection() {
+        if (BuildConfig.BRANDED) return;
         if (busy) return;
         stopAudio();
         LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL);
@@ -735,6 +817,7 @@ public class MainActivity extends Activity {
     }
     private void signOut() {
         stopAudio(); video.close(); results = new JSONArray(); pages.clear(); lastReply = ""; wake.setChecked(false); vault.clear(); account = new JSONObject();
+        configureBrand();
         thread = ""; messages.removeAllViews(); prompt.setText(""); update();
         status.setText("Signed out on this device. You can revoke access in Account → Tokens.");
     }

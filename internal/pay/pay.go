@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -411,4 +412,33 @@ func ReadForCustomer(owner, agent, id, customer string) (*Session, error) {
 		return nil, ErrNotFound
 	}
 	return view(r), nil
+}
+
+// ForCustomer returns only this customer's usable purchases for one agent.
+func ForCustomer(owner, agent, customer string) ([]*Session, error) {
+	mu.Lock()
+	defer mu.Unlock()
+	records, err := load()
+	if err != nil {
+		return nil, err
+	}
+	out := []*Session{}
+	if customer == "" {
+		return out, nil
+	}
+	for _, r := range records {
+		if r.Owner == owner && r.Session.Agent == agent && r.Customer == customer {
+			s := view(r)
+			if s.Status == "paid" || s.Status == "active" {
+				out = append(out, s)
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].CreatedAt == out[j].CreatedAt {
+			return out[i].Id < out[j].Id
+		}
+		return out[i].CreatedAt > out[j].CreatedAt
+	})
+	return out, nil
 }

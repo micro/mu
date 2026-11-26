@@ -4,6 +4,7 @@ package mu.assistant.v1;
 option go_package = "mu/proto/assistant/v1;assistantv1";
 option java_package = "mu.micro.client.proto.assistant.v1";
 option java_multiple_files = true;
+import "assistant/v1/pay.proto";
 
 // Hosted single-agent app configuration. Publishing is explicit execution consent
 // for authenticated customers using public tools, never the creator's private data.
@@ -24,3 +25,16 @@ message AppAnswer {
   string text = 1;
   string thread = 2;
 }
+
+// Customer HTTP binding under /agent/{slug}/app/; api:agent + read/write.
+// GET profile; POST threads (ListThreadsRequest); POST history (ReadThreadRequest);
+// POST chat (AppPrompt); GET sessions; GET/POST session/{id} (read/start).
+// Threads and history return ListThreadsResponse and ReadThreadResponse.
+message AppProfile {
+ string id = 1;
+ string slug = 2;
+ string name = 3;
+ string description = 4;
+ bool paid = 5;
+}
+message AppSessions { repeated PaidSession sessions = 1; }

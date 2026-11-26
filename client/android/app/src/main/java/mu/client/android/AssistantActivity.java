@@ -62,10 +62,14 @@ public final class AssistantActivity extends Activity {
         status.setText(publicMode ? "Ask public questions, such as weather in a town. Unlock for your agent." : "Speak to " + label);
         update();
         // Begin only after the UI is visible, never from an unsolicited broadcast.
+        if (BuildConfig.BRANDED && publicMode) {
+            name.setText(BuildConfig.APP_NAME); status.setText("Unlock to continue in the app."); return;
+        }
         if (!invoked) { invoked = true; speak.post(() -> { if (active) listen(); }); }
     }
     private boolean signedIn() { return !account.optString("token").isEmpty() && (account.optLong("expires") > System.currentTimeMillis() || !account.optString("refresh").isEmpty()); }
     private void update() {
+        speak.setEnabled(!(BuildConfig.BRANDED && publicMode));
         speak.setText(listening || speaking || working ? "Stop" : "Speak");
         if (active && (listening || speaking || working)) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);

@@ -418,3 +418,37 @@ func TestCustomerRecoversExpiredCheckoutAfterLostResponse(t *testing.T) {
 		t.Fatal("replacement checkout failed", replacement, err)
 	}
 }
+
+func TestCustomerSessionListIsolationAndExpiry(t *testing.T) {
+	fixture(t)
+	p := policy()
+	p.NotifyUrl = ""
+	makeSession := func(customer, ref string) *Session {
+		s, e := CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, &pb.CheckoutRequest{Reference: ref, Participants: 1}, customer)
+		if e != nil {
+			t.Fatal(e)
+		}
+		return s
+	}
+	alice := makeSession("alice", "alice-session")
+	bob := makeSession("bob", "bob-session")
+	pending := makeSession("alice", "pending-session")
+	_ = pending
+	for _, s := range []*Session{alice, bob} {
+		mutate(t, s.Id, func(r *Record) { r.Session.Status = "paid" })
+	}
+	for _, tc := range []struct {
+		owner, agent, customer string
+		count                  int
+	}{{"owner", "agent", "alice", 1}, {"owner", "agent", "bob", 1}, {"other", "agent", "alice", 0}, {"owner", "other", "alice", 0}, {"owner", "agent", "", 0}} {
+		list, e := ForCustomer(tc.owner, tc.agent, tc.customer)
+		if e != nil || len(list) != tc.count {
+			t.Fatalf("%+v: %v %v", tc, list, e)
+		}
+	}
+	mutate(t, alice.Id, func(r *Record) { r.Session.Status = "active"; r.Session.EndsAt = time.Now().Unix() - 1 })
+	list, e := ForCustomer("owner", "agent", "alice")
+	if e != nil || len(list) != 0 {
+		t.Fatal("expired session offered", list, e)
+	}
+}

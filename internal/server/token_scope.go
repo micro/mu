@@ -34,7 +34,7 @@ func mucpRootRequest(r *http.Request) bool {
 func productClientRequest(r *http.Request) bool {
 	// Mu Pay always serves JSON. Receipt reads and bodyless Start requests
 	// from booking apps can arrive without content negotiation headers.
-	if mucpRootRequest(r) || agent.PayRequest(r) {
+	if mucpRootRequest(r) || agent.PayRequest(r) || agent.AppRequest(r) {
 		return true
 	}
 	p := r.URL.Path

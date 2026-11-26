@@ -20,6 +20,7 @@ import (
 	"strings"
 	"sync"
 
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -42,7 +43,7 @@ func appName(a *Agent) string {
 	return a.Name
 }
 
-// This browser-only door never accepts an agent owner's bearer token as customer identity.
+// Browser and native clients use the authenticated customer identity.
 func agentAppHandler(w http.ResponseWriter, r *http.Request) bool {
 	parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/agent/"), "/", 3)
 	if !strings.HasPrefix(r.URL.Path, "/agent/") || len(parts) < 2 || parts[1] != "app" {
@@ -65,9 +66,14 @@ func agentAppHandler(w http.ResponseWriter, r *http.Request) bool {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
+	r = api.CredentialRequest(r)
 	_, acc := auth.TrySession(r)
-	if auth.TokenFromRequest(r) != nil || r.Header.Get("Authorization") != "" {
+	token := auth.TokenFromRequest(r) != nil || r.Header.Get("Authorization") != "" || r.Header.Get(api.TokenHeader) != ""
+	if token && !AppRequest(r) {
 		http.Error(w, "Sign in to use this app", 403)
+		return true
+	}
+	if token && !api.AuthorizeProduct(w, r, "agent", r.Method == "POST" && route != "threads" && route != "history") {
 		return true
 	}
 	if route == "settings" {
@@ -130,7 +136,7 @@ if(u.pathname==='/mu.css'||u.pathname==='/mu.js')e.respondWith(fetch(e.request).
 		return true
 	}
 	if r.Method == "POST" {
-		if !auth.StrictCSRF(r) {
+		if !token && !auth.StrictCSRF(r) {
 			http.Error(w, "Reload the page and try again", 403)
 			return true
 		}
@@ -138,6 +144,9 @@ if(u.pathname==='/mu.css'||u.pathname==='/mu.js')e.respondWith(fetch(e.request).
 			http.Error(w, "Too many requests; try again shortly", 429)
 			return true
 		}
+	}
+	if appClientHandler(w, r, a, acc.ID, route) {
+		return true
 	}
 	switch {
 	case r.Method == "GET" && route == "chats":
