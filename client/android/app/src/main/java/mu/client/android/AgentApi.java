@@ -35,6 +35,7 @@ final class AgentApi {
     static JSONObject ask(String server, String token, String agent, String thread, String prompt, boolean voice) throws Exception {
         if (prompt.getBytes(StandardCharsets.UTF_8).length > 8000)
             throw new IOException("Keep the message below 8,000 bytes.");
+        if (BuildConfig.BRANDED) return AppApi.ask(server, token, thread, prompt);
         AskRequest q = AskRequest.newBuilder().setAgentId(agent(agent)).setThread(thread).setPrompt(prompt)
             .setVoice(voice).setMode(AccessMode.ACCESS_MODE_PERSONAL).build();
         JSONObject receipt = submit(server, token, UUID.randomUUID().toString(), q);
@@ -53,6 +54,7 @@ final class AgentApi {
     }
 
     static JSONObject askPublic(String server, String token, String prompt) throws Exception {
+        if (BuildConfig.BRANDED) throw new IOException("Unlock to use " + BuildConfig.APP_NAME + ".");
         if (!catalog(server, token).optBoolean("publicQuestions", false))
             throw new IOException("This server does not support locked-phone questions. Unlock to continue.");
         if (prompt.getBytes(StandardCharsets.UTF_8).length > 8000) throw new IOException("Keep the message below 8,000 bytes.");
@@ -61,13 +63,16 @@ final class AgentApi {
     }
 
     static JSONObject catalog(String server, String token) throws Exception {
+        if (BuildConfig.BRANDED) return new JSONObject().put("agents", new JSONArray().put(AppApi.profile(server, token)));
         return call(server, token, "ListAgents", ListAgentsRequest.getDefaultInstance(), ListAgentsResponse.newBuilder());
     }
     static JSONObject threads(String server, String token, String agent, String page) throws Exception {
+        if (BuildConfig.BRANDED) return AppApi.call(server, token, "threads", ListThreadsRequest.newBuilder().setPageToken(page).setPageSize(25).build(), ListThreadsResponse.newBuilder());
         return call(server, token, "ListThreads", ListThreadsRequest.newBuilder().setAgentId(agent)
             .setPageToken(page).setPageSize(25).build(), ListThreadsResponse.newBuilder());
     }
     static JSONObject history(String server, String token, String thread, String page) throws Exception {
+        if (BuildConfig.BRANDED) return AppApi.call(server, token, "history", ReadThreadRequest.newBuilder().setThread(thread).setPageToken(page).setPageSize(100).build(), ReadThreadResponse.newBuilder());
         return call(server, token, "ReadThread", ReadThreadRequest.newBuilder().setThread(thread)
             .setPageToken(page).setPageSize(100).build(), ReadThreadResponse.newBuilder());
     }
@@ -93,6 +98,7 @@ final class AgentApi {
         return call(server, token, "ReadOperation", ReadOperationRequest.newBuilder().setId(id).build(), Operation.newBuilder());
     }
     private static JSONObject call(String server, String token, String operation, Message request, Message.Builder response) throws Exception {
+        if (BuildConfig.BRANDED) throw new IOException("This app only connects to its published agent.");
         if (vault != null) token = vault.accessToken(server, token);
         JSONObject raw = post(origin(server)+"/", token, JsonFormat.printer().print(request), "application/json", operation);
         // Ignore additive fields from a newer runtime; always retain content fallbacks.
@@ -120,11 +126,17 @@ final class AgentApi {
         return post(endpoint, token, body, contentType, "");
     }
     private static JSONObject post(String endpoint, String token, String body, String contentType, String operation) throws Exception {
+        return request(endpoint, token, body, contentType, operation);
+    }
+    static JSONObject get(String endpoint, String token) throws Exception {
+        return request(endpoint, token, null, "application/json", "");
+    }
+    private static JSONObject request(String endpoint, String token, String body, String contentType, String operation) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(endpoint).openConnection();
         c.setInstanceFollowRedirects(false); // Never forward credentials or replay an action.
         c.setConnectTimeout(15000);
         c.setReadTimeout(180000);
-        c.setRequestMethod("POST");
+        c.setRequestMethod(body == null ? "GET" : "POST");
         c.setRequestProperty("Accept", "application/json");
         c.setRequestProperty("Content-Type", contentType);
         if (!token.isEmpty()) c.setRequestProperty("Authorization", "Bearer " + token);
@@ -135,12 +147,12 @@ final class AgentApi {
             c.setRequestProperty("Micro-Endpoint", (operation.contains(".") ? operation : "Assistant."+operation));
             c.setRequestProperty("Micro-Id", requestId);
         }
-        c.setDoOutput(true);
+        c.setDoOutput(body != null);
         try {
-            try (OutputStream out = c.getOutputStream()) { out.write(body.getBytes(StandardCharsets.UTF_8)); }
+            if (body != null) try (OutputStream out = c.getOutputStream()) { out.write(body.getBytes(StandardCharsets.UTF_8)); }
             int code = c.getResponseCode();
             if (code == 401) throw new IOException("Your session has expired. Sign in again.");
-            if (code == 402) throw new IOException("Your account needs credit. Open Account to manage your plan.");
+            if (code == 402) throw new IOException(BuildConfig.BRANDED ? "A valid private session is required. Open Private sessions." : "Your account needs credit. Open Account to manage your plan.");
             if (code == 403) throw new IOException("Access denied. Reconnect and allow Assistant API access and actions.");
             if (!operation.isEmpty() && code == 504) throw new IOException("Your request was accepted and is still running. Open Chats to recover the reply.");
             if (!operation.isEmpty() && code >= 200 && code < 300 &&

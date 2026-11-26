@@ -24,8 +24,9 @@ final class OAuth {
     }
     static JSONObject begin(String server, String redirect) throws Exception {
         server = AgentApi.origin(server);
+        if (BuildConfig.BRANDED) AppApi.endpoint(server, "profile");
         JSONObject registration = AgentApi.post(server + "/oauth/register", "",
-                new JSONObject().put("client_name", "Mu for Android")
+                new JSONObject().put("client_name", BuildConfig.APP_NAME + " for Android")
                         .put("redirect_uris", new JSONArray().put(redirect)).toString(), "application/json");
         return new JSONObject().put("server", server).put("client", registration.getString("client_id"))
                 .put("verifier", random()).put("state", random()).put("created", System.currentTimeMillis())
@@ -35,7 +36,7 @@ final class OAuth {
         return pending.getString("server") + "/oauth/authorize?response_type=code"
                 + "&client_id=" + encode(pending.getString("client"))
                 + "&redirect_uri=" + encode(pending.getString("redirect"))
-                + "&scope=" + encode("read write api:agent api:home api:inbox api:services")
+                + "&scope=" + encode(BuildConfig.BRANDED ? "read write api:agent" : "read write api:agent api:home api:inbox api:services")
                 + "&state=" + encode(pending.getString("state"))
                 + "&code_challenge_method=S256&code_challenge=" + encode(challenge(pending.getString("verifier")));
     }

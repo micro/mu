@@ -1,5 +1,35 @@
 plugins { id 'com.android.application'; id 'com.google.protobuf' }
 
+// One codebase, with immutable identity for independently distributed agent apps.
+def configPath = providers.gradleProperty('agentApp').orNull
+def branded = configPath != null
+def configFile = branded ? file(configPath) : null
+def brand = branded ? new groovy.json.JsonSlurper().parse(configFile) : [:]
+def packageName = branded ? brand.packageId : 'mu.client.android'
+def appName = branded ? brand.name : 'Mu'
+def server = branded ? brand.server : ''
+def agentName = branded ? brand.agent : ''
+def icon = branded ? new File(configFile.parentFile, brand.icon ?: '') : null
+if (branded) {
+    if (!(packageName instanceof String) || !(packageName ==~ /mu\.micro\.agent\.[a-z][a-z0-9]{0,63}/))
+        throw new GradleException('packageId must be mu.micro.agent.<lowercase identifier>')
+    if (!(appName instanceof String) || appName.trim().isEmpty() || appName.length() > 60 || (appName =~ /[\p{Cntrl}]/).find())
+        throw new GradleException('name must contain 1–60 printable characters')
+    def uri
+    try { uri = new URI(server) } catch (Exception ignored) { throw new GradleException('server must be an HTTPS origin') }
+    if (uri.scheme != 'https' || !uri.host || uri.userInfo || uri.query || uri.fragment || !(uri.path in ['', '/']))
+        throw new GradleException('server must be an HTTPS origin')
+    server = new URI('https', null, uri.host, uri.port, null, null, null).toString()
+    if (!(agentName instanceof String) || !(agentName ==~ /[a-z0-9][a-z0-9_-]{0,79}/))
+        throw new GradleException('agent must be its reserved URL name')
+    if (!icon.isFile() || icon.length() > 4 * 1024 * 1024)
+        throw new GradleException('icon must be a local PNG up to 4 MB')
+    def image = javax.imageio.ImageIO.read(icon)
+    if (!icon.name.toLowerCase().endsWith('.png') || image == null || image.width != image.height || image.width < 192 || image.width > 2048)
+        throw new GradleException('icon must be a square PNG, 192–2048 pixels')
+}
+def quoted = { value -> groovy.json.JsonOutput.toJson(value) }
+
 def releaseName = providers.gradleProperty('releaseVersion').getOrElse('0.0.0').replaceFirst('^v', '')
 def parts = releaseName.tokenize('.')
 if (parts.size() != 3 || parts.any { !(it ==~ /[0-9]+/) || it.toInteger() > 999 }) {
@@ -9,7 +39,12 @@ android {
     namespace 'mu.client.android'
     compileSdk 36
     defaultConfig {
-        applicationId 'mu.client.android'
+        applicationId packageName
+        resValue 'string', 'app_name', quoted(appName)
+        buildConfigField 'boolean', 'BRANDED', branded.toString()
+        buildConfigField 'String', 'FIXED_SERVER', quoted(server)
+        buildConfigField 'String', 'FIXED_AGENT', quoted(agentName)
+        buildConfigField 'String', 'APP_NAME', quoted(appName)
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         minSdk 26
         targetSdk 36
@@ -30,20 +65,20 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix '.debug'
-            manifestPlaceholders = [oauthScheme: 'mu.client.android.debug']
-            buildConfigField 'String', 'OAUTH_REDIRECT', '"mu.client.android.debug://oauth/callback"'
+            manifestPlaceholders = [oauthScheme: packageName + '.debug']
+            buildConfigField 'String', 'OAUTH_REDIRECT', quoted(packageName + '.debug://oauth/callback')
         }
         release {
-            manifestPlaceholders = [oauthScheme: 'mu.client.android']
-            buildConfigField 'String', 'OAUTH_REDIRECT', '"mu.client.android://oauth/callback"'
+            manifestPlaceholders = [oauthScheme: packageName]
+            buildConfigField 'String', 'OAUTH_REDIRECT', quoted(packageName + '://oauth/callback')
             if (System.getenv('ANDROID_KEYSTORE')) { signingConfig signingConfigs.release }
             minifyEnabled false
         }
     }
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach {
-            outputFileName = variant.buildType.name == 'debug' ? 'mu-android-preview.apk' :
-                (System.getenv('ANDROID_KEYSTORE') ? 'mu-android.apk' : 'mu-android-unsigned.apk')
+            outputFileName = variant.buildType.name == 'debug' ? (branded ? packageName + '-preview.apk' : 'mu-android-preview.apk') :
+                (branded ? packageName + (System.getenv('ANDROID_KEYSTORE') ? '.apk' : '-unsigned.apk') : (System.getenv('ANDROID_KEYSTORE') ? 'mu-android.apk' : 'mu-android-unsigned.apk'))
         }
     }
     compileOptions {
@@ -118,3 +153,23 @@ tasks.register('prepareProtocolLicense', Copy) {
     rename { 'MU-PROTOCOL-APACHE-2.0.txt' }
 }
 tasks.named('preBuild').configure { dependsOn 'prepareProtocolLicense' }
+
+// Generate the launcher resource for each build, keeping brand assets out of source.
+def brandResources = layout.buildDirectory.dir('generated/brand-res')
+android.sourceSets.main.res.srcDir(brandResources)
+tasks.register('prepareBrand') {
+    inputs.property('name', appName)
+    if (branded) inputs.file(icon)
+    outputs.dir(brandResources)
+    doLast {
+        delete brandResources
+        def target = new File(brandResources.get().asFile, 'drawable/app_icon.png')
+        target.parentFile.mkdirs()
+        if (branded) target.bytes = icon.bytes
+        else {
+            def vector = new File(target.parentFile, 'app_icon.xml')
+            vector.text = '<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"><path android:fillColor="#FFFFFF" android:pathData="M0,0h108v108h-108z"/><path android:fillColor="#202020" android:pathData="M25,78V30h12l17,25 17,-25h12v48H70V52L54,75 38,52v26z"/></vector>'
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'prepareBrand' }

@@ -214,11 +214,135 @@ func (x *AppAnswer) GetThread() string {
 	return ""
 }
 
+// Customer HTTP binding under /agent/{slug}/app/; api:agent + read/write.
+// GET profile; POST threads (ListThreadsRequest); POST history (ReadThreadRequest);
+// POST chat (AppPrompt); GET sessions; GET/POST session/{id} (read/start).
+// Threads and history return ListThreadsResponse and ReadThreadResponse.
+type AppProfile struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Paid          bool                   `protobuf:"varint,5,opt,name=paid,proto3" json:"paid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppProfile) Reset() {
+	*x = AppProfile{}
+	mi := &file_assistant_v1_app_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppProfile) ProtoMessage() {}
+
+func (x *AppProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_assistant_v1_app_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppProfile.ProtoReflect.Descriptor instead.
+func (*AppProfile) Descriptor() ([]byte, []int) {
+	return file_assistant_v1_app_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AppProfile) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AppProfile) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *AppProfile) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AppProfile) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AppProfile) GetPaid() bool {
+	if x != nil {
+		return x.Paid
+	}
+	return false
+}
+
+type AppSessions struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Sessions      []*PaidSession         `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppSessions) Reset() {
+	*x = AppSessions{}
+	mi := &file_assistant_v1_app_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppSessions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppSessions) ProtoMessage() {}
+
+func (x *AppSessions) ProtoReflect() protoreflect.Message {
+	mi := &file_assistant_v1_app_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppSessions.ProtoReflect.Descriptor instead.
+func (*AppSessions) Descriptor() ([]byte, []int) {
+	return file_assistant_v1_app_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AppSessions) GetSessions() []*PaidSession {
+	if x != nil {
+		return x.Sessions
+	}
+	return nil
+}
+
 var File_assistant_v1_app_proto protoreflect.FileDescriptor
 
 const file_assistant_v1_app_proto_rawDesc = "" +
 	"\n" +
-	"\x16assistant/v1/app.proto\x12\x0fmu.assistant.v1\"\x86\x01\n" +
+	"\x16assistant/v1/app.proto\x12\x0fmu.assistant.v1\x1a\x16assistant/v1/pay.proto\"\x86\x01\n" +
 	"\bAgentApp\x12\x1c\n" +
 	"\tpublished\x18\x01 \x01(\bR\tpublished\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -231,7 +355,16 @@ const file_assistant_v1_app_proto_rawDesc = "" +
 	"\asession\x18\x03 \x01(\tR\asession\"7\n" +
 	"\tAppAnswer\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x16\n" +
-	"\x06thread\x18\x02 \x01(\tR\x06threadBI\n" +
+	"\x06thread\x18\x02 \x01(\tR\x06thread\"z\n" +
+	"\n" +
+	"AppProfile\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x12\n" +
+	"\x04paid\x18\x05 \x01(\bR\x04paid\"G\n" +
+	"\vAppSessions\x128\n" +
+	"\bsessions\x18\x01 \x03(\v2\x1c.mu.assistant.v1.PaidSessionR\bsessionsBI\n" +
 	"\"mu.micro.client.proto.assistant.v1P\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
 
 var (
@@ -246,18 +379,22 @@ func file_assistant_v1_app_proto_rawDescGZIP() []byte {
 	return file_assistant_v1_app_proto_rawDescData
 }
 
-var file_assistant_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_assistant_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_assistant_v1_app_proto_goTypes = []any{
-	(*AgentApp)(nil),  // 0: mu.assistant.v1.AgentApp
-	(*AppPrompt)(nil), // 1: mu.assistant.v1.AppPrompt
-	(*AppAnswer)(nil), // 2: mu.assistant.v1.AppAnswer
+	(*AgentApp)(nil),    // 0: mu.assistant.v1.AgentApp
+	(*AppPrompt)(nil),   // 1: mu.assistant.v1.AppPrompt
+	(*AppAnswer)(nil),   // 2: mu.assistant.v1.AppAnswer
+	(*AppProfile)(nil),  // 3: mu.assistant.v1.AppProfile
+	(*AppSessions)(nil), // 4: mu.assistant.v1.AppSessions
+	(*PaidSession)(nil), // 5: mu.assistant.v1.PaidSession
 }
 var file_assistant_v1_app_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	5, // 0: mu.assistant.v1.AppSessions.sessions:type_name -> mu.assistant.v1.PaidSession
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_assistant_v1_app_proto_init() }
@@ -265,13 +402,14 @@ func file_assistant_v1_app_proto_init() {
 	if File_assistant_v1_app_proto != nil {
 		return
 	}
+	file_assistant_v1_pay_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_assistant_v1_app_proto_rawDesc), len(file_assistant_v1_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -68,3 +68,20 @@ func TestNativeAuthorizationProvidesExplicitAppReturn(t *testing.T) {
 		t.Fatal("web OAuth redirect changed")
 	}
 }
+
+func TestBrandedNativeRedirect(t *testing.T) {
+	for _, uri := range []string{"mu.micro.agent.malten://oauth/callback", "mu.micro.agent.malten.debug://oauth/callback"} {
+		if !nativeRedirect(uri) || !RegisterableRedirect(uri) {
+			t.Fatal("branded callback rejected", uri)
+		}
+		code := CreateAuthorizationCode("brand-test", "unused-account", uri, "", "plain", "read", "write", "api:agent")
+		if _, err := ExchangeAuthorizationCode(code, "brand-test", uri, ""); err == nil || !strings.Contains(err.Error(), "S256") {
+			t.Fatal("missing native PKCE", err)
+		}
+	}
+	for _, uri := range []string{"mu.micro.agent.malten://oauth/callback?x=1", "mu.micro.agent.malten://oauth/callback#x", "mu.micro.agent.malten://other/callback", "mu.micro.agent.malten://oauth/other", "mu.micro.agent.malten.evil://oauth/callback", "mu.micro.agent.a_b://oauth/callback", "evil://oauth/callback"} {
+		if RegisterableRedirect(uri) {
+			t.Fatal("unsafe callback allowed", uri)
+		}
+	}
+}

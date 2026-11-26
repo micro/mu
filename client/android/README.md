@@ -165,3 +165,53 @@ features, not part of this integration.
 Spoken replies select a high-quality installed offline English voice, preferring the
 device locale. Available quality depends on the Android speech engine and installed
 voice data; this does not download voices or send reply text to a cloud speech service.
+
+## A native app for one agent
+
+Use the same Android client with a fixed published agent and server. Customers
+sign in with their own accounts; chats and paid sessions use the customer API
+shared with the agent's PWA. The app has no agent/server picker or creator token.
+Publish the agent under **Edit agent → Configure app** first.
+
+Create a local `app.json` alongside a square PNG icon (192–2048px):
+
+```json
+{
+  "packageId": "mu.micro.agent.malten",
+  "name": "Malten",
+  "server": "https://micro.mu",
+  "agent": "malten",
+  "icon": "icon.png"
+}
+```
+
+`agent` is the reserved URL name, not the display name. `packageId` must use
+`mu.micro.agent.` followed by a lowercase letter and up to 63 lowercase letters
+or digits. Each distributed app needs a distinct package ID. Keep its server,
+agent and package identity stable across upgrades.
+
+```sh
+gradle -p client/android -PagentApp=/absolute/path/app.json \
+  -PreleaseVersion=1.0.0 testDebugUnitTest lintDebug assembleDebug
+```
+
+For signed distribution, set `ANDROID_KEYSTORE`, `ANDROID_STORE_PASSWORD`,
+`ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`, then build `assembleRelease`
+for an APK or `bundleRelease` for an Android App Bundle. Preserve the signing key
+and increase `releaseVersion` for updates. Release APKs are named after the
+package ID; unsigned outputs are explicitly labelled. Debug installs append
+`.debug` to the package ID and use a separate OAuth callback and account storage.
+No signing secrets or creator credentials belong in `app.json` or the repository.
+
+The runtime must include branded Android OAuth callbacks and the customer API.
+The system browser handles customer sign-in with S256 PKCE. The callback is
+bound to the exact app package; credentials stay in Android Keystore storage.
+Locked-phone public questions are disabled for branded apps.
+
+**Private sessions** lists that customer's paid or active sessions for this
+agent. Starting a paid session requires confirmation; resuming one does not
+extend its time. Its saved chat is restored. Expiry is enforced on the server.
+This release consumes existing purchases only: it has no in-app checkout,
+external purchase link, Google Play Billing, automated store submission or
+creator build/download hosting. Store distribution and purchasing need their
+own release work. Ordinary Mu builds remain unchanged when `agentApp` is absent.
