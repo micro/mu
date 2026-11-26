@@ -48,7 +48,7 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 				if !seenSources[u.String()] {
 					seenSources[u.String()] = true
 					label := title
-					if item.Title != "" {
+					if item.Title != "" && title != "Prayer times" {
 						label = item.Title
 					}
 					sources = append(sources, "["+briefText(label+" · "+u.Hostname())+"](<"+u.String()+">)")
@@ -70,12 +70,21 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 			b.WriteString(fallback + "\n")
 		}
 	}
+	if overview := briefText(c.Overview); overview != "" {
+		fmt.Fprintf(&b, "\n## Overview\n\n%s\n", overview)
+	}
 	section("Your day", c.Day, 8, "No calendar items were available. This may not include all your commitments.")
 	section("Weather", c.Weather, 1, "")
 	if len(c.Travel) > 0 {
 		section("Travel", c.Travel, 3, "")
 	}
-	section("Prayer times", c.Prayer, 1, "")
+	section("Prayer times", c.Prayer, 5, "")
+	for _, row := range c.Prayer {
+		if row.Title != "" && strings.TrimSpace(row.Text) != "" {
+			b.WriteString("\nISNA calculation, not congregation times.\n")
+			break
+		}
+	}
 	if BriefWorldNews(e) {
 		section("Headlines", c.Headlines, 5, "")
 	}

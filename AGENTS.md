@@ -197,7 +197,10 @@ Scheduled morning briefs use `/api/daily/YYYY-MM-DD` for the schedule's local
 date. They quote only the daily verse, with a dated `/prayer` link; the
 hadith, name and reflection remain available on that same dated page. Never replace
 a missing daily reminder with the hourly `/api/latest` response. Travel follows
-Weather in the fixed brief renderer.
+Weather in the fixed brief renderer. The morning brief opens with a short
+overview from the same included model call. Prayer times are taken directly
+from the prayer service and rendered as one bullet per prayer, with a single
+calculation-method note below the list.
 
 ## The access model
 
