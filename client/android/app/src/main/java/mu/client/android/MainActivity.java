@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
     private long speechEpoch;
     private boolean voiceRequest, controlsOnly;
     private JSONArray agents = new JSONArray();
-    private boolean agentAvailable, agentLinkPending, launchHandled;
+    private boolean agentAvailable, agentLinkPending, launchHandled, appPaid;
     private String agentName = "Micro", agentDescription = "A personal assistant";
     private Button agentPicker;
     private TextView description;
@@ -194,6 +194,7 @@ public class MainActivity extends Activity {
     private void send() {
         if (busy || !signedIn()) { if (!signedIn()) connection(); return; }
         if (!agentAvailable) { status.setText("Choose an available agent first."); return; }
+        if (BuildConfig.BRANDED && appPaid && account.optString("paid_session").isEmpty()) { privateSessions(); return; }
         String text = prompt.getText().toString().trim();
         if (text.isEmpty()) return;
         dismissKeyboard();
@@ -540,11 +541,16 @@ public class MainActivity extends Activity {
                             String previous = agent;
                             agent = item.optString("id", item.optString("slug"));
                             if (!previous.equals(agent) && account.optJSONObject("threads") != null && thread.isEmpty()) thread = account.optJSONObject("threads").optString(agent);
+                            appPaid = item.optBoolean("paid");
                             agentName = item.optString("name", agent); agentDescription = item.optString("description"); found = true; break;
                         }
                     }
                     agentAvailable = found;
-                    if (found) persistSelection();
+                    if (found) {
+                        persistSelection();
+                        if (BuildConfig.BRANDED && appPaid && account.optString("paid_session").isEmpty())
+                            status.setText("Open Account → Private sessions to start or resume a session.");
+                    }
                     else status.setText(BuildConfig.BRANDED ? "This app is no longer available." : "This agent is not available to this account. Tap its name to choose another.");
                     update();
                     if (found && !choose && !thread.isEmpty()) restoreChat("", true);

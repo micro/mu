@@ -151,6 +151,8 @@ final class AgentApi {
         try {
             if (body != null) try (OutputStream out = c.getOutputStream()) { out.write(body.getBytes(StandardCharsets.UTF_8)); }
             int code = c.getResponseCode();
+            if (BuildConfig.BRANDED && code == 400)
+                throw new IOException("Could not send. Check Private sessions or reopen the chat.");
             if (code == 401) throw new IOException("Your session has expired. Sign in again.");
             if (code == 402) throw new IOException(BuildConfig.BRANDED ? "A valid private session is required. Open Private sessions." : "Your account needs credit. Open Account to manage your plan.");
             if (code == 403) throw new IOException("Access denied. Reconnect and allow Assistant API access and actions.");

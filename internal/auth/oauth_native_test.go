@@ -37,7 +37,7 @@ func TestNativeExchangeRequiresPKCE(t *testing.T) {
 }
 
 func TestNativeAuthorizationProvidesExplicitAppReturn(t *testing.T) {
-	for _, scheme := range []string{"mu.client.android", "mu.client.android.debug"} {
+	for _, scheme := range []string{"mu.client.android", "mu.client.android.debug", "mu.micro.agent.malten", "mu.micro.agent.malten.debug"} {
 		w := httptest.NewRecorder()
 		finishAuthorization(w, httptest.NewRequest("POST", "/oauth/authorize", nil), scheme+"://oauth/callback", "one-use-code", "state<&")
 		if w.Code != 200 || w.Header().Get("Location") != "" {
