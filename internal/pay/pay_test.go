@@ -354,3 +354,29 @@ func TestTransportFailureIsNotReplayed(t *testing.T) {
 		t.Fatal("uncertain transport replayed", state, e, calls)
 	}
 }
+
+func TestCustomerCheckoutCannotBeAdopted(t *testing.T) {
+	fixture(t)
+	p := policy()
+	p.NotifyUrl = ""
+	q := &pb.CheckoutRequest{Reference: "customer-booking", Participants: 1}
+	s, err := CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, customer := range []string{"bob", ""} {
+		if _, err = ReadForCustomer("owner", "agent", s.Id, customer); err == nil {
+			t.Fatal("foreign receipt read")
+		}
+	}
+	if _, err = CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "bob"); err == nil {
+		t.Fatal("foreign reference adopted")
+	}
+	if _, err = Checkout(context.Background(), "owner", "agent", "https://micro.mu", p, "", q); err == nil {
+		t.Fatal("customer purchase adopted by owner checkout")
+	}
+	again, err := CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "alice")
+	if err != nil || again.Id != s.Id {
+		t.Fatal("retry lost identity", err)
+	}
+}

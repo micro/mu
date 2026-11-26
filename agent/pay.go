@@ -150,7 +150,7 @@ func payForm(owner, id string) string {
 	body += app.Field{ID: "b-pay-price", Type: "number", Label: "Price per participant (minor units: 300 = £3 or $3)", Value: strconv.Itoa(int(p.Price)), Wide: true}.HTML()
 	body += app.Field{ID: "b-pay-currency", Label: "Currency", Wide: true, Options: []app.Option{{Value: "gbp", Label: "GBP", On: p.Currency == "gbp"}, {Value: "usd", Label: "USD", On: p.Currency == "usd"}}}.HTML()
 	body += app.Field{ID: "b-pay-minutes", Type: "number", Label: "Duration in minutes", Value: strconv.Itoa(int(p.Minutes)), Wide: true}.HTML()
-	body += app.Field{ID: "b-pay-return", Label: "App return URL (HTTPS)", Value: p.ReturnUrl, Wide: true}.HTML()
+	body += app.Field{ID: "b-pay-return", Label: "App return URL (HTTPS; leave empty for the hosted agent app)", Value: p.ReturnUrl, Wide: true}.HTML()
 	body += app.Field{ID: "b-pay-notify", Label: "Payment notification URL (optional, HTTPS)", Value: p.NotifyUrl, Wide: true}.HTML()
 	if secret != "" {
 		body += `<details><summary>Notification signing secret</summary><code>` + html.EscapeString(secret) + `</code><p>Keep this on your app server. Verify Mu-Pay-Signature before granting access.</p></details>`

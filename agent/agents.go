@@ -12,6 +12,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/model"
+	"mu/internal/origin"
 	"mu/internal/pay"
 	"mu/service/mail"
 	"strconv"
@@ -85,6 +86,11 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				policy = &pay.Policy{Enabled: r.PostFormValue("pay_enabled") == "true", Price: int32(price), Currency: r.PostFormValue("pay_currency"), Minutes: int32(minutes), ReturnUrl: r.PostFormValue("pay_return"), NotifyUrl: r.PostFormValue("pay_notify")}
+				if policy.ReturnUrl == "" {
+					if existing := For(acc.ID, r.PostFormValue("id")); existing != nil {
+						policy.ReturnUrl = origin.URL(r) + appPath(existing)
+					}
+				}
 				if err := pay.Validate(policy); err != nil {
 					w.WriteHeader(400)
 					_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
@@ -414,7 +420,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		app.Field{ID: "b-name", Label: "Name", Max: 60, Required: true, Wide: true, Value: name}.HTML() +
 		app.Field{ID: "b-desc", Label: "Description", Max: 140, Wide: true, Value: desc}.HTML() +
 		app.Field{ID: "b-prompt", Label: "System prompt", Rows: 9, Required: true, Wide: true, Value: prompt}.HTML() +
-		app.ServiceSelect("b-scope", "b-service-list", "tool", scopeChoices) + modelHTML + profileHTML + profileLinksForm(acc.ID, editID) + payForm(acc.ID, editID) + `
+		app.ServiceSelect("b-scope", "b-service-list", "tool", scopeChoices) + modelHTML + profileHTML + profileLinksForm(acc.ID, editID) + payForm(acc.ID, editID) + appSettingsLink(acc.ID, editID) + `
  <div class="form-actions"><button type="submit" class="btn">Save agent</button><a href="/agents">Cancel</a></div>
  </form></div>
 

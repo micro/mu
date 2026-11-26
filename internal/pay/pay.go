@@ -27,6 +27,7 @@ type Session = pb.PaidSession
 type Record struct {
 	Session       *Session `json:"session"`
 	Owner         string   `json:"owner"`
+	Customer      string   `json:"customer,omitempty"`
 	StripeID      string   `json:"stripe_id"`
 	StripeURL     string   `json:"stripe_url"`
 	ReturnURL     string   `json:"return_url"`
@@ -142,6 +143,18 @@ func view(r Record) *Session {
 	return s
 }
 func Checkout(ctx context.Context, owner, agent, base string, p *Policy, secret string, q *pb.CheckoutRequest) (*Session, error) {
+	return createCheckout(ctx, owner, agent, base, p, secret, q, "")
+}
+
+// CheckoutForCustomer binds a hosted app purchase to its authenticated customer.
+func CheckoutForCustomer(ctx context.Context, owner, agent, base string, p *Policy, q *pb.CheckoutRequest, customer string) (*Session, error) {
+	if customer == "" {
+		return nil, ErrNotFound
+	}
+	return createCheckout(ctx, owner, agent, base, p, "", q, customer)
+}
+
+func createCheckout(ctx context.Context, owner, agent, base string, p *Policy, secret string, q *pb.CheckoutRequest, customer string) (*Session, error) {
 	if Backend == nil {
 		return nil, errors.New("Mu Pay is not configured")
 	}
@@ -159,6 +172,9 @@ func Checkout(ctx context.Context, owner, agent, base string, p *Policy, secret 
 	var r Record
 	for _, existing := range records {
 		if existing.Owner == owner && existing.Session.Agent == agent && existing.Session.Reference == q.Reference {
+			if existing.Customer != customer {
+				return nil, ErrNotFound
+			}
 			if existing.Session.Participants != q.Participants {
 				return nil, errors.New("booking reference already has a different participant count")
 			}
@@ -200,7 +216,7 @@ func Checkout(ctx context.Context, owner, agent, base string, p *Policy, secret 
 		query := returnURL.Query()
 		query.Set("session", id)
 		returnURL.RawQuery = query.Encode()
-		r = Record{Owner: owner, ReturnURL: returnURL.String(), NotifyURL: p.NotifyUrl, NotifySecret: secret, Expires: now + 23*3600,
+		r = Record{Owner: owner, Customer: customer, ReturnURL: returnURL.String(), NotifyURL: p.NotifyUrl, NotifySecret: secret, Expires: now + 23*3600,
 			Session: &Session{Id: id, Agent: agent, Reference: q.Reference, Participants: q.Participants, Amount: p.Price * q.Participants, Currency: p.Currency, Credits: credits, Minutes: p.Minutes, Status: "pending", CreatedAt: now, CheckoutUrl: strings.TrimRight(base, "/") + "/pay/" + id}}
 		records[id] = r
 		// Persist before contacting Stripe so retries use the same key and amounts.
@@ -374,4 +390,19 @@ func Bind(owner, agent, id, thread string) error {
 	r.Session.Thread = thread
 	records[id] = r
 	return data.SaveJSON(file, records)
+}
+
+// ReadForCustomer checks purchase ownership before exposing or starting a session.
+func ReadForCustomer(owner, agent, id, customer string) (*Session, error) {
+	mu.Lock()
+	defer mu.Unlock()
+	records, err := load()
+	if err != nil {
+		return nil, err
+	}
+	r, ok := records[id]
+	if !ok || customer == "" || r.Customer != customer || r.Owner != owner || r.Session.Agent != agent {
+		return nil, ErrNotFound
+	}
+	return view(r), nil
 }

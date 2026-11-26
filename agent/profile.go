@@ -31,12 +31,15 @@ func profile(w http.ResponseWriter, r *http.Request) bool {
 	if acc != nil && ((a != nil && acc.ID == a.Owner) || (a == nil && For(acc.ID, name) != nil)) {
 		return false
 	}
-	if a == nil || !a.ProfilePublic {
+	if a == nil || (!a.ProfilePublic && !appPublished(a)) {
 		app.NotFound(w, r, "Agent not found")
 		return true
 	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	body := `<article class="reader-content"><p>` + html.EscapeString(a.Description) + `</p>`
+	if appPublished(a) {
+		body += `<div class="form-actions"><a class="btn" href="` + appPath(a) + `">Open app</a></div>`
+	}
 	website, booking := "", ""
 	if validPublicURL(a.Website) == nil {
 		website = a.Website
@@ -50,6 +53,9 @@ func profile(w http.ResponseWriter, r *http.Request) bool {
 	}
 	if a.Pay != nil && a.Pay.Enabled && pay.Validate(a.Pay) == nil {
 		body += `<p>` + html.EscapeString("Talk to "+a.Name+" privately · "+sessionPrice(a.Pay)) + `</p>`
+		if appPublished(a) && a.App.Paid {
+			booking = appPath(a)
+		}
 		if booking == "" {
 			booking = website
 		}
@@ -57,9 +63,9 @@ func profile(w http.ResponseWriter, r *http.Request) bool {
 			body += `<div class="form-actions"><a class="btn" href="` + html.EscapeString(booking) + `" rel="noopener noreferrer">Book a private session</a></div>`
 		}
 	}
-	if acc == nil && website == "" && booking == "" {
+	if !appPublished(a) && acc == nil && website == "" && booking == "" {
 		body += `<div class="form-actions"><a class="btn" href="/login?next=/agent/` + html.EscapeString(Slug(a)) + `">Sign in</a></div>`
-	} else if website == "" && booking == "" {
+	} else if !appPublished(a) && website == "" && booking == "" {
 		body += `<p>This is a public profile. Chat access is managed by the agent's owner.</p>`
 	}
 	body += `</article>`

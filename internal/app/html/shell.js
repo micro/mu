@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (session ? u.searchParams.get('session') === session : u.pathname === location.pathname && !u.search) { a.classList.add('active'); a.setAttribute('aria-current', 'page'); }
   });
 });
-if (navigator.serviceWorker) navigator.serviceWorker.register('/mu.js', {scope:'/', updateViaCache:'none'}).then(function (r) {r.update();}).catch(function () {});
+if (navigator.serviceWorker && !document.body.dataset.agentApp) navigator.serviceWorker.register('/mu.js', {scope:'/', updateViaCache:'none'}).then(function (r) {r.update();}).catch(function () {});
 
 document.addEventListener('click', function(e) {
   document.querySelectorAll('.action-menu[open]').forEach(function(menu) {

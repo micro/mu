@@ -163,6 +163,7 @@ document.addEventListener('submit', function(e) {
   const action = submitter?.getAttribute('formaction') || form.action;
   if (method !== 'POST' || new URL(action, location.href).origin !== location.origin) return;
   // The capped public demo has its own origin and admission checks.
+  if (form.matches('[data-app-chat]')) return;
   if (form.matches('[data-demo-form]') && new URL(action, location.href).pathname === '/') return;
   // Sign-in and invitation forms must remain usable without a session.
   if (['/login','/signup','/request-invite','/invite','/forms/submit'].includes(new URL(action, location.href).pathname)) return;
@@ -1088,7 +1089,7 @@ document.querySelector('[data-copy-token]')?.addEventListener('click',async()=>{
 
 
 Object.assign(window,{loginWithPasskey,registerPasskey,base64urlToBuffer,bufferToBase64url,muUseMyLocation,muForgetLocation,createToken});
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && !document.body.dataset.agentApp) {
  navigator.serviceWorker.register('/mu.js', {scope:'/'}).catch(()=>{});
 }
 }
@@ -2352,4 +2353,65 @@ if (typeof document !== 'undefined') {
  const dismiss = document.createElement('button'); dismiss.type = 'button'; dismiss.textContent = 'Dismiss';
  dismiss.addEventListener('click', () => { try { localStorage.setItem('mu-install-experiences-v1', '1'); } catch (_) {} notice.remove(); });
  actions.append(open, dismiss); notice.append(text, actions); main.prepend(notice);
+})();
+
+// A hosted agent app is a customer view, with no background network polling.
+if (typeof document !== 'undefined') (function () {
+ const base=document.body.dataset.agentApp;
+ if(!base)return;
+ const $=selector=>document.querySelector(selector);
+ const status=$('[data-app-status]');
+ const report=text=>{if(status)status.textContent=text;};
+ if('serviceWorker' in navigator)navigator.serviceWorker.register(base+'sw.js',{scope:base}).catch(()=>{});
+ let install;
+ window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();install=event;$('[data-app-install]').hidden=false;});
+ $('[data-app-install]').addEventListener('click',async()=>{if(!install)return;await install.prompt();install=null;$('[data-app-install]').hidden=true;});
+ window.addEventListener('appinstalled',()=>{$('[data-app-install]').hidden=true;});
+ window.addEventListener('offline',()=>report('You’re offline. Reconnect to send your message.'));
+ window.addEventListener('online',()=>report('Back online.'));
+ const form=$('[data-app-chat]');if(!form)return;
+ const messages=$('[data-app-messages]'),chats=$('[data-app-chats]');
+ let current='',busy=false;
+ // Booking IDs identify purchases, never authorize them. Ownership is checked
+ // on the server. Keep only booking recovery references, never chat text/tokens.
+ const key='agent-app-booking:'+base;
+ let session=new URL(location.href).searchParams.get('session')||'';
+ const read=key=>{try{return sessionStorage.getItem(key)||'';}catch{return '';}};
+ const save=(key,value)=>{try{sessionStorage.setItem(key,value);}catch{}};
+ session=session||read(key);if(session)save(key,session);
+ let reference=read(key+':reference');
+ async function request(path,body){
+  const response=await fetch(base+path,{method:body===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-CSRF-Token':getCsrfToken()},body:body===undefined?undefined:JSON.stringify(body)});
+  if(!response.ok)throw Error((await response.text()).trim()||'Request failed');return response.json();
+ }
+ function append(role,text){const row=document.createElement('article');row.className='record-card';const label=document.createElement('strong');label.textContent=role==='person'?'You':document.title;const content=document.createElement('div');content.className='agent-app-text';content.textContent=text;row.append(label,content);messages.appendChild(row);}
+ async function list(){const rows=await request('chats');chats.replaceChildren(new Option('New chat',''));rows.forEach(row=>chats.add(new Option(row.title,row.id)));chats.value=current;}
+ async function open(id){current=id;messages.replaceChildren();if(id){const rows=await request('chats/'+encodeURIComponent(id));rows.forEach(row=>append(row.role,row.text));}chats.value=id;}
+ chats.addEventListener('change',()=>{if(busy){chats.value=current;return;}open(chats.value).catch(e=>report(e.message));});
+ $('[data-app-new]').addEventListener('click',()=>{if(!busy)open('').catch(e=>report(e.message));});
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(busy)return;const prompt=form.elements.prompt.value.trim();if(!prompt)return;
+  busy=true;form.querySelector('button').disabled=true;chats.disabled=true;report('Thinking…');
+  try{const result=await request('chat',{prompt,thread:current,session});current=result.thread;form.elements.prompt.value='';report('');await open(current);await list();}
+  catch(e){report(e.message);}
+  finally{busy=false;form.querySelector('button').disabled=false;chats.disabled=false;}
+ });
+ const book=$('[data-app-book]'),check=$('[data-app-check]'),start=$('[data-app-start]'),payment=$('[data-app-session]');
+ function showSession(s){
+  session=s.id;save(key,session);check.hidden=false;start.hidden=s.status!=='paid';
+  payment.textContent=s.status==='active'?'Session active until '+new Date(s.ends_at*1000).toLocaleTimeString():s.status==='paid'?'Payment confirmed. Start when you’re ready.':s.status==='expired'?'Session ended. Book another session to continue.':'Waiting for payment confirmation. After paying, press Check payment.';
+  book.textContent=s.status==='pending'?'Continue payment':'Book a private session';
+  if(s.status==='expired'){reference='';save(key+':reference','');}
+  if(s.thread&&!current)open(s.thread).catch(e=>report(e.message));
+ }
+ if(book){
+  book.addEventListener('click',async()=>{book.disabled=true;try{
+   if(!reference){reference=crypto.randomUUID();save(key+':reference',reference);}
+   const s=await request('checkout',{reference});showSession(s);
+   if(s.status==='pending')location.assign(s.checkout_url);else if(s.status==='expired'){report('This checkout expired. Press Book again for a new session.');}
+  }catch(e){report(e.message);}finally{book.disabled=false;}});
+  check.addEventListener('click',()=>request('session/'+encodeURIComponent(session)).then(showSession).catch(e=>report(e.message)));
+  start.addEventListener('click',async()=>{start.disabled=true;try{showSession(await request('session/'+encodeURIComponent(session),{}));}catch(e){report(e.message);}finally{start.disabled=false;}});
+ }
+ list().then(()=>{if(book&&session)return request('session/'+encodeURIComponent(session)).then(showSession);}).catch(e=>report(e.message));
 })();
