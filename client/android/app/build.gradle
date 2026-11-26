@@ -9,7 +9,8 @@ def packageName = branded ? brand.packageId : 'mu.client.android'
 def appName = branded ? brand.name : 'Mu'
 def server = branded ? brand.server : ''
 def agentName = branded ? brand.agent : ''
-def icon = branded ? new File(configFile.parentFile, brand.icon ?: '') : null
+def icon = branded ? new File(brand.icon ?: '') : null
+if (branded && !icon.isAbsolute()) icon = new File(configFile.parentFile, brand.icon ?: '')
 if (branded) {
     if (!(packageName instanceof String) || !(packageName ==~ /mu\.micro\.agent\.[a-z][a-z0-9]{0,63}/))
         throw new GradleException('packageId must be mu.micro.agent.<lowercase identifier>')

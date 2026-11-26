@@ -7,7 +7,7 @@ while the app is visible. No dashboard, service catalogue, or embedded web app.
 ## Account and conversation
 
 Tap **Connection**, keep `https://micro.mu` or enter your own HTTPS Mu origin,
-and sign in. Your browser handles login, signup and consent. After allowing access, tap **Open Micro** to return to the app. Existing browser
+and sign in. Your browser handles login, signup and consent. After allowing access, tap **Open app** to return to the app. Existing browser
 sessions can be reused. Choose Assistant API / agent access and allow actions.
 The app uses S256 PKCE and validates a single-use, expiring state; it never sees
 your password. Credentials are encrypted using Android Keystore and excluded
@@ -16,13 +16,12 @@ from backups. Debug and release apps have distinct callback schemes.
 Your account's existing tools, plan, credits and conversations are used.
 Follow-up messages retain the returned thread. **New chat** starts a fresh one.
 Switching accounts/server clears the current conversation and draft.
-Earlier messages remain in the web Inbox; this first client does not yet browse
-all saved conversations. **Sign out** removes local access; revoke the grant
+Use **Chats** to browse saved conversations. **Sign out** removes local access; revoke the grant
 under Account → Tokens to invalidate it on the server.
 
-Mu currently issues 24-hour OAuth tokens with no refresh flow. When a token
-expires or is revoked, sign in again. The client does not silently resend
-requests. If a request times out, check the web Inbox before retrying.
+The client renews expiring OAuth access tokens using its stored refresh token.
+If access is revoked, sign in again. It does not silently resend prompts. If a
+request times out, check Chats before retrying.
 
 The server must include support for the Android OAuth callback allowlist.
 Older Mu versions reject this registration rather than accepting an unsafe
