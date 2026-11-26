@@ -225,6 +225,12 @@ func createCheckout(ctx context.Context, owner, agent, base string, p *Policy, s
 		}
 	}
 	if view(r).Status == "expired" {
+		// Hosted customers need the confirmed terminal state even when the first
+		// checkout response was lost. The browser can then discard its retry key.
+		// External integrations retain their existing error contract.
+		if customer != "" {
+			return view(r), nil
+		}
 		return nil, errors.New("checkout expired; use a new booking reference")
 	}
 	if r.StripeID == "" {
