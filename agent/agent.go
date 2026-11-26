@@ -156,6 +156,9 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if agentAppHandler(w, r) {
+		return
+	}
 	if payHandler(w, r) {
 		return
 	}

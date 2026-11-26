@@ -354,3 +354,67 @@ func TestTransportFailureIsNotReplayed(t *testing.T) {
 		t.Fatal("uncertain transport replayed", state, e, calls)
 	}
 }
+
+func TestCustomerCheckoutCannotBeAdopted(t *testing.T) {
+	fixture(t)
+	p := policy()
+	p.NotifyUrl = ""
+	q := &pb.CheckoutRequest{Reference: "customer-booking", Participants: 1}
+	s, err := CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, customer := range []string{"bob", ""} {
+		if _, err = ReadForCustomer("owner", "agent", s.Id, customer); err == nil {
+			t.Fatal("foreign receipt read")
+		}
+	}
+	if _, err = CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "bob"); err == nil {
+		t.Fatal("foreign reference adopted")
+	}
+	if _, err = Checkout(context.Background(), "owner", "agent", "https://micro.mu", p, "", q); err == nil {
+		t.Fatal("customer purchase adopted by owner checkout")
+	}
+	again, err := CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "alice")
+	if err != nil || again.Id != s.Id {
+		t.Fatal("retry lost identity", err)
+	}
+}
+
+func TestCustomerRecoversExpiredCheckoutAfterLostResponse(t *testing.T) {
+	f := fixture(t)
+	f.fail = true
+	p := policy()
+	p.NotifyUrl = ""
+	q := &pb.CheckoutRequest{Reference: "lost-customer-checkout", Participants: 1}
+	first, err := CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "alice")
+	if err == nil || first != nil {
+		t.Fatal("expected lost checkout response")
+	}
+	records, err := load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var id string
+	for key, r := range records {
+		if r.Customer == "alice" && r.Session.Reference == q.Reference {
+			id = key
+		}
+	}
+	if id == "" {
+		t.Fatal("retry identity was not persisted")
+	}
+	mutate(t, id, func(r *Record) { r.Expires = time.Now().Unix() - 1 })
+	expired, err := CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "alice")
+	if err != nil || expired.Id != id || expired.Status != "expired" {
+		t.Fatal("expiry was not recoverable", expired, err)
+	}
+	if f.calls != 1 {
+		t.Fatal("expired checkout contacted provider again")
+	}
+	q.Reference = "replacement-customer-checkout"
+	replacement, err := CheckoutForCustomer(context.Background(), "owner", "agent", "https://micro.mu", p, q, "alice")
+	if err != nil || replacement.Id == id || replacement.Status != "pending" {
+		t.Fatal("replacement checkout failed", replacement, err)
+	}
+}

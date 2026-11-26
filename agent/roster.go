@@ -103,8 +103,9 @@ type Agent struct {
 	// should answer.
 	Description string `json:"description,omitempty"`
 	// Pay is the owner's policy; the signing secret never appears in agent JSON.
-	Pay       *pay.Policy `json:"pay,omitempty"`
-	PaySecret string      `json:"-"`
+	Pay       *pay.Policy  `json:"pay,omitempty"`
+	PaySecret string       `json:"-"`
+	App       *appSettings `json:"app,omitempty"`
 	// ProfilePublic exposes only the safe profile, not the underlying record.
 	ProfilePublic bool   `json:"profile_public,omitempty"`
 	Website       string `json:"website,omitempty"`
@@ -345,7 +346,7 @@ func validServices(in []string) []string {
 func fields(a *Agent) map[string]any {
 	return map[string]any{
 		"name": a.Name, "kind": a.Kind, "prompt": a.Prompt,
-		"description": a.Description, "model": a.Model, "profile_public": a.ProfilePublic, "website": a.Website, "booking_url": a.BookingURL, "pay": a.Pay, "pay_secret": a.PaySecret,
+		"description": a.Description, "model": a.Model, "profile_public": a.ProfilePublic, "website": a.Website, "booking_url": a.BookingURL, "pay": a.Pay, "pay_secret": a.PaySecret, "app": a.App,
 		"token_id": a.TokenID, "services": strings.Join(a.Services, ","),
 		"tag":     a.Tag,
 		"former":  strings.Join(a.Former, ","),
@@ -512,6 +513,9 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	a.ProfilePublic, _ = rec.Data["profile_public"].(bool)
 	a.Website, a.BookingURL = str("website"), str("booking_url")
 	a.PaySecret = str("pay_secret")
+	if raw, err := json.Marshal(rec.Data["app"]); err == nil {
+		_ = json.Unmarshal(raw, &a.App)
+	}
 	if raw, err := json.Marshal(rec.Data["pay"]); err == nil {
 		_ = json.Unmarshal(raw, &a.Pay)
 	}

@@ -782,6 +782,9 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	ctx, cancel := context.WithTimeout(runContext(opts), turnTimeout)
 	defer cancel()
 	if run.provider == "codex" {
+		if opts.anonymousTools {
+			return "", fmt.Errorf("public agent apps require an API model")
+		}
 		var err error
 		ctx, err = codex.ForAccount(ctx, accountID)
 		if err != nil {
