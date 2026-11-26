@@ -80,7 +80,7 @@ func TestMorningMarketsRenderEveryAssetInOrder(t *testing.T) {
 }
 
 func TestMorningTravelAppearsAfterWeather(t *testing.T) {
-	content, err := parseBriefContent(`{"day":[{"text":"Meeting at 09:00"}],"travel":[{"text":"TfL: Central line delays","url":"https://tfl.gov.uk/"}]}`)
+	content, err := parseBriefContent(`{"day":[{"text":"Meeting at 09:00"}],"travel":[{"text":"TfL: Central line delays","url":"https://tfl.gov.uk/"}]}`, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,5 +141,54 @@ func TestBriefOmitsEmptyOptionalSections(t *testing.T) {
 	}
 	if !strings.Contains(got, "may not include all your commitments") || !strings.Contains(got, "Today's verse is unavailable") {
 		t.Fatal("missing important availability notice", got)
+	}
+}
+
+func TestMorningPrayerTimesAreIndividualBullets(t *testing.T) {
+	times := &prayer.PrayerTimes{Fajr: "05:57", Sunrise: "07:30", Dhuhr: "11:49", Asr: "13:40", Maghrib: "16:00", Isha: "17:40"}
+	items := briefPrayerItems(times)
+	result := renderMorningBrief(BriefContent{Prayer: items}, "", &events.Event{Zone: "Europe/London"}, time.Now(), "", false)
+	start := strings.Index(result, "## Prayer times")
+	end := strings.Index(result, "## Daily reminder")
+	section := result[start:end]
+	for _, want := range []string{"- **Fajr** — 05:57", "- **Dhuhr** — 11:49", "- **Asr** — 13:40", "- **Maghrib** — 16:00", "- **Isha** — 17:40"} {
+		if strings.Count(section, want) != 1 {
+			t.Fatalf("missing or repeated %q: %s", want, section)
+		}
+	}
+	if strings.Count(section, "\n- ") != 5 || strings.Contains(section, "Sunrise") || strings.Contains(section, "- **Prayer times**") {
+		t.Fatal(section)
+	}
+	if !strings.Contains(section, "\n\nISNA calculation, not congregation times.\n") {
+		t.Fatal("calculation note must be separate", section)
+	}
+	rendered := app.RenderString(section)
+	if strings.Count(rendered, "<li>") != 5 || !strings.Contains(rendered, "<p>ISNA calculation, not congregation times.</p>") {
+		t.Fatal("rendered prayer layout", rendered)
+	}
+	times.Fajr = ""
+	if len(briefPrayerItems(times)) != 4 || len(briefPrayerItems(nil)) != 0 {
+		t.Fatal("missing times were invented")
+	}
+}
+
+func TestMorningOverviewPrecedesDetails(t *testing.T) {
+	content, err := parseBriefContent(`{"overview":"Rail services have resumed after overnight repairs. Rain is expected before your afternoon appointment.","day":[{"text":"Appointment at 14:00"}],"prayer":[{"title":"Prayer times","text":"Invented times"}]}`, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(content.Prayer) != 0 {
+		t.Fatal("model prayer times must not be used")
+	}
+	result := renderMorningBrief(content, "Asim", &events.Event{Zone: "UTC"}, time.Now(), "", false)
+	heading := strings.Index(result, "## Overview")
+	day := strings.Index(result, "## Your day")
+	if heading < 0 || heading > day || !strings.Contains(result, "## Overview\n\n"+content.Overview+"\n") {
+		t.Fatal("missing overview paragraph", result)
+	}
+	content.Overview = "Text\n## Injected <script>"
+	result = renderMorningBrief(content, "", &events.Event{Zone: "UTC"}, time.Now(), "", false)
+	if strings.Contains(result, "\n## Injected") || strings.Contains(result, "<script>") {
+		t.Fatal("overview injected structure", result)
 	}
 }

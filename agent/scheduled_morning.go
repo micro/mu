@@ -21,18 +21,19 @@ import (
 )
 
 type briefSource struct {
-	Name string `json:"source"`
-	Text string `json:"text"`
-	URL  string `json:"url,omitempty"`
+	Prayer []BriefItem `json:"-"`
+	Name   string      `json:"source"`
+	Text   string      `json:"text"`
+	URL    string      `json:"url,omitempty"`
 }
 
 // Fetch a fixed set of read-only sources before the single included model call.
 // In particular, a scheduled brief must not depend on someone having opened Home
 // recently to warm its in-memory calendar cache.
-func morningFacts(ctx context.Context, owner string, schedule *events.Event, now time.Time) (string, string) {
+func morningFacts(ctx context.Context, owner string, schedule *events.Event, now time.Time) (string, string, []BriefItem) {
 	acc, err := auth.GetAccount(owner)
 	if err != nil {
-		return "Account unavailable.", ""
+		return "Account unavailable.", "", nil
 	}
 	loc, err := time.LoadLocation(schedule.Zone)
 	if err != nil {
@@ -75,12 +76,11 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 			return briefSource{Name: "Weather — saved location; use the provider's dated rows", Text: weather.ForecastText(ctx, acc.Lat, acc.Lon), URL: origin.Self() + "/weather"}
 		}})
 		jobs = append(jobs, lookup{"Prayer times", func() briefSource {
-			var rsp prayer.TimesResponse
-			err := (prayer.Server{}).Times(ctx, &prayer.TimesRequest{Lat: acc.Lat, Lon: acc.Lon, TZ: loc.String()}, &rsp)
+			times, err := prayer.GetPrayerTimes(acc.Lat, acc.Lon, loc.String(), "isna")
 			if err != nil {
-				return briefSource{Name: "Prayer times", Text: "Today's calculation was unavailable."}
+				return briefSource{Name: "Prayer times", Prayer: []BriefItem{{Text: "Today's calculation was unavailable."}}}
 			}
-			return briefSource{Name: "Prayer times — calculated with the service's default ISNA convention, not mosque congregation times", Text: rsp.Times, URL: origin.Self() + "/prayer"}
+			return briefSource{Name: "Prayer times", Prayer: briefPrayerItems(times)}
 		}})
 		// TfL covers London. Never label its result as local travel for other cities,
 		// nor imply that it includes the user's National Rail route.
@@ -116,8 +116,13 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 	}
 	sort.Strings(keys)
 	reflection := ""
+	var prayerItems []BriefItem
 	for _, k := range keys {
 		src := sections[k]
+		if src.Name == "Prayer times" {
+			prayerItems = src.Prayer
+			continue
+		}
 		if src.Name == "Daily reminder" {
 			reflection = src.Text
 			continue
@@ -129,7 +134,7 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 		appendBriefSource(&b, briefSource{Name: "News published in the last 24 hours", Text: briefNews(news.GetFeed(), now)})
 	}
 	b.WriteString("\nOnly the sources supplied above are available. Missing calendar entries cannot establish availability. No inbox messages have been evaluated for whether a reply is owed.\n")
-	return b.String(), reflection
+	return b.String(), reflection, prayerItems
 }
 func appendBriefSource(b *strings.Builder, src briefSource) {
 	if strings.TrimSpace(src.Text) == "" {
@@ -300,4 +305,19 @@ func morningReminder(d *prayer.ReminderData, date string) string {
 		return ""
 	}
 	return "## Daily reminder\n\n" + strings.TrimSpace(d.Verse) + "\n\n[Read the daily reminder](" + origin.Self() + "/prayer?date=" + date + ")"
+}
+
+// Exact service values, in prayer order: the model never rewrites these times.
+func briefPrayerItems(times *prayer.PrayerTimes) []BriefItem {
+	if times == nil {
+		return nil
+	}
+	var items []BriefItem
+	for _, row := range times.Ordered() {
+		if row.Name == "Sunrise" || strings.TrimSpace(row.Time) == "" {
+			continue
+		}
+		items = append(items, BriefItem{Title: row.Name, Text: row.Time, URL: origin.Self() + "/prayer"})
+	}
+	return items
 }

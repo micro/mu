@@ -74,9 +74,9 @@ func RunScheduled(owner, id, revision string, due time.Time) (handled bool, answ
 		answer, err = eveningDigest(schedule, at)
 	} else {
 		marketItems := briefMarketItems(markets.AllPriceData(), time.Now())
-		facts, reflection := morningFacts(ctx, owner, schedule, at)
+		facts, reflection, prayerItems := morningFacts(ctx, owner, schedule, at)
 		var content BriefContent
-		content, err = IncludedBrief(ctx, owner, facts, marketItems)
+		content, err = IncludedBrief(ctx, owner, facts, marketItems, prayerItems)
 		if err == nil {
 			answer = renderMorningBrief(content, acc.Name, schedule, at, reflection, auth.Plan(owner) == "pro" && schedule.Plan)
 		}
